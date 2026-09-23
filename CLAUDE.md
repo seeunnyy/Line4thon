@@ -16,7 +16,7 @@ Bodycast — 이벤트 대응형 다이어트 재도전 코치 모바일 서비�
 - 모바일 우선 웹앱 (스마트폰 세로 화면 기준, 폭 390px)
 
 ## Current Stage
-Session 1 완료(문서 보강·브랜드 반영), Next.js 스캐폴딩 완료. 다음: Session 2 — 모바일 셸(폰 프레임·세이프에어리어·탭바) + 스플래시 + 빈 라우트 구성
+화면 시안 완료(로직 없음). 다음: 기능 구현 P0 — 저장 모듈 → 시뮬레이션 엔진 → 체크인 로직 → LLM 라우트
 
 ## Working Rules
 - 변경 제안 전 관련 파일을 먼저 읽는다.
@@ -29,6 +29,9 @@ Session 1 완료(문서 보강·브랜드 반영), Next.js 스캐폴딩 완료. 
 - LLM 관련 작업은 docs/LLM.md를 따른다.
 - P0 → P1 → P2 순서를 지킨다.
 - 모든 화면은 모바일 세로(기준 폭 390px)에서 먼저 설계하고 확인한다. 데스크톱용 별도 레이아웃은 만들지 않는다.
+- 프로토타입 기준 화면(복귀 체크인)의 수치는 docs/UI-SPEC.md 값만 쓴다. 임의로 바꾸지 않는다. 버튼은 코발트 배경 + 흰 글자다.
+- 화면 시안 단계(로직 없음)에서는 P1 화면(기록·아바타 꾸미기)도 정적 화면까지만 만든다. 기능 구현은 P0 → P1 → P2 순서를 지킨다.
+- 화면 시안의 샘플 데이터는 `src/mocks/sample.ts`에만 두고 화면에 "샘플" 표시를 붙인다. 기능 구현 때 저장 모듈 데이터로 교체하고, `?state=`·`?weather=` 미리보기 스위치와 `src/app/dev`는 함께 지운다.
 
 ## Boundaries
 Do not add:
@@ -46,3 +49,4 @@ Do not add:
 - Follow docs/PRD.md for product requirements.
 - Follow docs/SIMULATION.md for calculation constants and formulas.
 - Follow docs/LLM.md for LLM integration and safety rules.
+- Follow docs/UI-SPEC.md for prototype-based UI measurements.

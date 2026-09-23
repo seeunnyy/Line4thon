@@ -27,6 +27,16 @@ const TABS = [
     ),
   },
   {
+    href: "/app/log",
+    label: "기록",
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+      </>
+    ),
+  },
+  {
     href: "/app/me",
     label: "마이페이지",
     icon: (
@@ -38,12 +48,14 @@ const TABS = [
   },
 ];
 
+// UI-SPEC.md 6장 탭바 규격: 높이 64+safe-area, 4열 균등, 아이콘 24(위 패딩 9),
+// 라벨 12/16, 아이콘·라벨 간격 2, 활성=cobalt, 비활성=subtext, 배경 surface, 그림자 tabbar.
 export default function TabBar() {
   const pathname = usePathname();
 
   return (
     <nav
-      className="flex border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]"
+      className="sticky bottom-0 grid h-[calc(64px+env(safe-area-inset-bottom))] grid-cols-4 bg-surface pb-[env(safe-area-inset-bottom)] shadow-tabbar"
       aria-label="주요 화면 이동"
     >
       {TABS.map((tab) => {
@@ -52,8 +64,10 @@ export default function TabBar() {
           <Link
             key={tab.href}
             href={tab.href}
-            className="flex min-h-[44px] flex-1 flex-col items-center justify-center gap-1 py-2"
             aria-current={active ? "page" : undefined}
+            className={`flex min-h-[44px] flex-col items-center gap-0.5 pt-[9px] text-tab ${
+              active ? "text-cobalt" : "text-subtext"
+            }`}
           >
             <svg
               width="24"
@@ -62,16 +76,11 @@ export default function TabBar() {
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
-              className={active ? "text-primary" : "text-subtext"}
               aria-hidden="true"
             >
               {tab.icon}
             </svg>
-            <span
-              className={`text-xs ${active ? "font-medium text-primary" : "text-subtext"}`}
-            >
-              {tab.label}
-            </span>
+            <span>{tab.label}</span>
           </Link>
         );
       })}

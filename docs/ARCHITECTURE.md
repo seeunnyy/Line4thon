@@ -1,7 +1,7 @@
 # ARCHITECTURE.md
 
 ## Platform
-- 모바일 우선 웹앱(Next.js). 공통 레이아웃이 앱 셸을 담당한다: 폭 최대 430px 중앙 정렬(데스크톱 브라우저에서는 폰 크기 프레임을 화면 중앙에 표시), 세이프에어리어, 탭바.
+- 모바일 우선 웹앱(Next.js). 공통 레이아웃이 앱 셸을 담당한다: 데스크톱에서는 390px 폰 프레임, 모바일은 360~430px 유동, 세이프에어리어, 탭바.
 - 네이티브 앱 빌드·앱스토어 배포는 범위 밖이다. 2단계에서 웨어러블(HealthKit 등)이나 푸시 알림이 필요해지면 그때 네이티브 전환을 검토한다.
 
 ## Service Structure
@@ -20,6 +20,7 @@ User → 스플래시/인트로 → 온보딩(정보 입력 → 아바타) → �
 - `/app/me`: 마이페이지 (탭)
 - `/app/me/avatar`: 아바타 꾸미기
 - `/api/coach`: LLM 호출 전용 서버 API 라우트
+- `/dev`: 화면 시안 확인용 색인 (개발 전용, production 빌드에서는 404, 배포 전에 `src/app/dev` 삭제)
 
 ### 라우팅 규칙
 - `/app/*`은 프로필·아바타가 없으면 `/onboarding/profile`로 보낸다.
@@ -46,6 +47,9 @@ User → 스플래시/인트로 → 온보딩(정보 입력 → 아바타) → �
 
 ## Source Structure
 - `src/`: application source code
+  - `src/app/`: 라우트 (탭 화면은 `app/app/(tabs)/`, 하위 흐름은 그 밖에 둔다)
+  - `src/components/ui/`: 공통 UI 컴포넌트 (Button, Chip, Card, Header, BottomSheet 등)
+  - `src/mocks/sample.ts`: 화면 시안용 샘플 데이터 (기능 구현 때 저장 모듈로 교체)
 - `docs/`: project documents
 - `tests/`: test code
 

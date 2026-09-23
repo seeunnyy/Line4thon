@@ -19,10 +19,13 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className="min-h-dvh bg-slate-100 text-ink antialiased">
-        {/* 데스크톱에서는 폭 최대 430px 폰 프레임을 중앙에, 모바일에서는 화면 전체를 채운다.
+        {/* 데스크톱에서는 390px 고정 폰 프레임, 모바일에서는 360~430px 유동.
             같은 마크업이라 데스크톱용 별도 레이아웃을 따로 만들지 않는다. */}
         <div className="flex min-h-dvh justify-center">
-          <div className="min-h-dvh w-full max-w-[430px] bg-white pt-[env(safe-area-inset-top)] shadow-none sm:shadow-xl">
+          <div
+            data-spec="frame"
+            className="relative min-h-dvh w-full max-w-[430px] bg-surface pt-[env(safe-area-inset-top)] sm:w-[390px] sm:shadow-xl"
+          >
             {children}
           </div>
         </div>

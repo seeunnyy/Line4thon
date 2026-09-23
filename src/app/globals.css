@@ -1,3 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@font-face{font-family:'Bodycast Sans';font-weight:400;font-style:normal;font-display:swap;src:url('/fonts/NanumSquareRound-400.woff2') format('woff2')}
+@font-face{font-family:'Bodycast Sans';font-weight:700;font-style:normal;font-display:swap;src:url('/fonts/NanumSquareRound-700.woff2') format('woff2')}
+/* 아래 두 개는 위 두 개보다 뒤에 선언해야 라틴 구간에서 이쪽이 이긴다 */
+@font-face{font-family:'Bodycast Sans';font-weight:400;font-style:normal;font-display:swap;unicode-range:U+0020-007E,U+00A0-00FF,U+2010-2027;ascent-override:87.9%;descent-override:25.5%;line-gap-override:0%;src:url('/fonts/GoogleSans-latin-400.woff2') format('woff2')}
+@font-face{font-family:'Bodycast Sans';font-weight:700;font-style:normal;font-display:swap;unicode-range:U+0020-007E,U+00A0-00FF,U+2010-2027;ascent-override:88.6%;descent-override:25.5%;line-gap-override:0%;src:url('/fonts/GoogleSans-latin-700.woff2') format('woff2')}
+
+body {
+  font-family: 'Bodycast Sans', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+  word-spacing: -0.01em;
+}

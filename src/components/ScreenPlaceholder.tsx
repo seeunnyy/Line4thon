@@ -9,7 +9,7 @@ export default function ScreenPlaceholder({
 }) {
   return (
     <main className="flex min-h-dvh flex-col justify-center gap-2 px-6 text-center">
-      <h1 className="text-xl font-semibold text-ink">{title}</h1>
+      <h1 className="text-xl font-bold text-ink">{title}</h1>
       <p className="text-subtext">{description}</p>
     </main>
   );
