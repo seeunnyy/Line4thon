@@ -1,14 +1,19 @@
-export default function LandingPage() {
+import Link from "next/link";
+
+export default function SplashPage() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center gap-4 px-6 text-center">
-      <p className="text-sm font-medium text-slate-500">다이어트 예보</p>
-      <h1 className="text-2xl font-semibold">
-        무너져도 괜찮아요, 다시 예보를 확인하세요
-      </h1>
-      <p className="text-slate-600">
-        회식·여행·명절 같은 이벤트를 미리 시뮬레이션하고, 계획된 복귀로
-        이어주는 재도전 코치 MVP입니다.
-      </p>
+    <main className="flex min-h-dvh flex-col px-6">
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+        <p className="text-2xl font-semibold text-primary">Bodycast</p>
+        <p className="text-subtext">일정이 있는 날의 몸무게를 미리 예보해드려요</p>
+      </div>
+
+      <Link
+        href="/onboarding/profile"
+        className="mb-[calc(1.5rem+env(safe-area-inset-bottom))] block w-full rounded-full bg-primary py-4 text-center font-medium text-on-brand"
+      >
+        시작하기
+      </Link>
     </main>
   );
 }
