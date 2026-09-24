@@ -1,35 +1,99 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/ui/Header";
 import ProgressDots from "@/components/ui/ProgressDots";
 import Field from "@/components/ui/Field";
 import ChipGroup from "@/components/ui/ChipGroup";
 import Chip from "@/components/ui/Chip";
+import Card from "@/components/ui/Card";
 import StickyBottom from "@/components/ui/StickyBottom";
 import Button from "@/components/ui/Button";
 import TextLink from "@/components/ui/TextLink";
+import {
+  ACTIVITY_OPTIONS,
+  SEX_OPTIONS,
+  calcTdee,
+  formatTdee,
+  type ActivityLevel,
+  type Sex,
+} from "@/lib/tdee";
+import { loadDraftNickname } from "@/lib/onboardingDraft";
 
-// Mifflin-St Jeor 공식이 여성/남성 두 가지만 정의돼 있어 선택지도 둘이다(docs/SIMULATION.md 2-1).
-const SEXES = ["여성", "남성"] as const;
+// 빈 칸·0은 입력하지 않은 것으로 본다.
+const toNumber = (v: string) => {
+  const n = parseFloat(v);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
 
-// 활동계수 4단계(docs/SIMULATION.md 2-1). 계수는 계산 로직 구현 때 저장 모듈에서 쓴다.
-const ACTIVITIES = [
-  { id: "sedentary", label: "주로 앉아 있어요", sub: "운동은 거의 안 해요" },
-  { id: "light", label: "가볍게 움직여요", sub: "가끔 걷거나 운동해요" },
-  { id: "moderate", label: "꽤 움직여요", sub: "운동이 일상이에요" },
-  { id: "active", label: "많이 움직여요", sub: "거의 매일 운동해요" },
-] as const;
-
-// 몸 정보 입력(온보딩 2/3). 모두 선택 입력이다. 저장·TDEE 계산은 없다 — 입력·선택 상태만 화면에 보여준다.
+// 몸 정보 입력(온보딩 2/3). 모두 선택 입력이다. 저장은 없다.
+// 5개가 모두 채워지면 "다음"이 같은 화면의 결과 상태(하루 권장 섭취 칼로리)를 먼저 보여준다(SIMULATION.md 6장).
 export default function BodyPage() {
   const router = useRouter();
-  const [sex, setSex] = useState<string | null>(null);
+  const [sex, setSex] = useState<Sex | null>(null);
   const [age, setAge] = useState("");
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
-  const [activity, setActivity] = useState<string | null>(null);
+  const [activity, setActivity] = useState<ActivityLevel | null>(null);
+  const [showResult, setShowResult] = useState(false);
+  const [nickname, setNickname] = useState<string | null>(null);
+
+  useEffect(() => setNickname(loadDraftNickname()), []);
+
+  const tdee = calcTdee({
+    sex,
+    age: toNumber(age),
+    heightCm: toNumber(height),
+    weightKg: toNumber(weight),
+    activity,
+  });
+  const hasTdee = tdee !== null && tdee > 0;
+
+  const goAvatar = () => router.push("/onboarding/avatar");
+
+  if (showResult && hasTdee) {
+    return (
+      <div className="flex min-h-dvh flex-col">
+        <Header
+          variant="back"
+          backHref="/onboarding/profile"
+          center={<ProgressDots total={3} current={2} />}
+        />
+
+        <main className="flex-1 px-5 pb-6">
+          <h1 className="mt-2 text-display font-bold">하루 권장 섭취 칼로리를 계산했어요</h1>
+          <p className="mt-3 text-body text-subtext">
+            키·체중·나이·활동량으로 계산한 추정치예요.
+          </p>
+
+          <Card className="mt-6 px-5 py-6 text-center">
+            <p className="text-label text-subtext">
+              {nickname ? `${nickname}님의 하루 권장 섭취 칼로리는` : "하루 권장 섭취 칼로리는"}
+            </p>
+            <p className="mt-2">
+              <span className="text-hero-num font-bold text-cobalt">{formatTdee(tdee)}</span>
+              <span className="ml-1 text-lead font-bold text-ink">이에요</span>
+            </p>
+          </Card>
+
+          <p className="mt-4 text-body text-subtext">
+            이벤트 없는 날은 이만큼 먹는 게 &lsquo;평소&rsquo;예요. 예보는 이 기준에서 더 먹는 양으로
+            계산해요.
+          </p>
+        </main>
+
+        <StickyBottom>
+          <Button size="lg" icon onClick={goAvatar}>
+            다음
+          </Button>
+          <TextLink onClick={() => setShowResult(false)} className="mt-1">
+            다시 입력할게요
+          </TextLink>
+        </StickyBottom>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -49,13 +113,13 @@ export default function BodyPage() {
         <div className="mt-6">
           <p className="mb-2 text-label text-subtext">성별</p>
           <ChipGroup label="성별" columns={2}>
-            {SEXES.map((s) => (
+            {SEX_OPTIONS.map((s) => (
               <Chip
-                key={s}
+                key={s.id}
                 size="row"
-                label={s}
-                selected={sex === s}
-                onClick={() => setSex(s)}
+                label={s.label}
+                selected={sex === s.id}
+                onClick={() => setSex(s.id)}
               />
             ))}
           </ChipGroup>
@@ -91,7 +155,7 @@ export default function BodyPage() {
         <div className="mt-6">
           <p className="mb-2 text-label text-subtext">평소 얼마나 움직이나요?</p>
           <ChipGroup label="평소 얼마나 움직이나요?" columns={2}>
-            {ACTIVITIES.map((a) => (
+            {ACTIVITY_OPTIONS.map((a) => (
               <Chip
                 key={a.id}
                 size="stack"
@@ -107,7 +171,7 @@ export default function BodyPage() {
       </main>
 
       <StickyBottom>
-        <Button size="lg" icon onClick={() => router.push("/onboarding/avatar")}>
+        <Button size="lg" icon onClick={() => (hasTdee ? setShowResult(true) : goAvatar())}>
           다음
         </Button>
         <TextLink href="/onboarding/avatar" className="mt-1">

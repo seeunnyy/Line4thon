@@ -130,12 +130,16 @@ export const EVENT_KINDS: readonly EventKind[] = ["회식", "여행", "명절", 
 
 // 프리셋 kcal은 docs/SIMULATION.md 2장(650 / 1,000 / 2,000)만 쓴다.
 export const AMOUNT_PRESETS = [
-  { id: "light", label: "가볍게", kcal: "약 650kcal" },
-  { id: "normal", label: "보통", kcal: "약 1,000kcal" },
-  { id: "many", label: "많이", kcal: "약 2,000kcal" },
+  { id: "light", label: "가볍게", kcal: "약 650kcal", value: 650 },
+  { id: "normal", label: "보통", kcal: "약 1,000kcal", value: 1000 },
+  { id: "many", label: "많이", kcal: "약 2,000kcal", value: 2000 },
 ] as const;
 
 export type AmountPresetId = (typeof AMOUNT_PRESETS)[number]["id"];
+
+// 프리셋 비교 문구용 샘플 TDEE. SIMULATION.md 5장 TDEE 확인 예시(여성 30세 165cm 60kg 좌식 = 1,584.3kcal).
+// 저장 모듈이 생기면 온보딩에서 계산한 사용자 TDEE로 바꾼다.
+export const SAMPLE_TDEE = 1584.3;
 
 // ── 예보 결과 ─────────────────────────────────────────────
 
