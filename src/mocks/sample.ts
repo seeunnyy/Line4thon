@@ -173,6 +173,132 @@ export const GUIDE_SAMPLE = {
   ],
 } as const;
 
+// ── 예보 결과: 몽실이와 한 주 미리 보기 ─────────────────────
+// 화면(WeekPlayer)은 이 모양만 읽는다. 기능 구현 때 시뮬레이션 엔진이 같은 모양으로 채우면 화면은 그대로 쓴다.
+// 숫자는 SIM_SAMPLE·GRAPH_POINTS 문구(SIMULATION.md 5장 검증 예시)만 재사용한다.
+
+export interface ForecastScene {
+  id: string;
+  day: number; // days 배열 인덱스(이벤트 장면은 이벤트 첫날)
+  label: string; // 말풍선 위 작은 줄: "토요일 · 다음 날"
+  weather: Weather; // 몽실이 모습·배경
+  hours: number | null; // 이벤트 직후부터 지난 시간(그래프 재생 위치). 이벤트 전은 null
+  line: string; // 말풍선 한 줄
+  big: string | null; // 큰 숫자. 없으면 날씨 이름을 크게 쓴다
+  note: string; // 큰 숫자 밑 한 줄
+}
+
+export interface ForecastStory {
+  title: string;
+  amount: string;
+  days: WeekDay[]; // 날짜 스트립 7칸(이벤트 날짜 기준, 수렴 72시간이 창 안에 들어온다)
+  event: { label: string; day: number; span: number }; // 여러 날 이벤트도 블록 하나(SIMULATION.md 4장 6)
+  scenes: ForecastScene[];
+}
+
+// 이벤트 직후 → 24·48·72시간 장면. 여러 날 이벤트는 마지막 날 다음 날부터 24시간이 시작된다.
+const afterScenes = (
+  eventScene: Pick<ForecastScene, "id" | "day" | "label">,
+  firstAfterDay: number,
+  days: WeekDay[],
+): ForecastScene[] => {
+  const dayName = (i: number) => `${days[i].dow}요일`;
+  return [
+    {
+      ...eventScene,
+      weather: "rain",
+      hours: 0,
+      line: GRAPH_POINTS[0].text,
+      big: null,
+      note: "숫자가 잠시 오르내려도 자연스러운 변동이에요",
+    },
+    {
+      id: "h24",
+      day: firstAfterDay,
+      label: `${dayName(firstAfterDay)} · ${GRAPH_POINTS[1].label}`,
+      weather: "cloudy",
+      hours: 24,
+      line: GRAPH_POINTS[1].text,
+      big: "+1~2kg",
+      note: SIM_SAMPLE.displayedNote,
+    },
+    {
+      id: "h48",
+      day: firstAfterDay + 1,
+      label: `${dayName(firstAfterDay + 1)} · ${GRAPH_POINTS[2].label}`,
+      weather: "sunny",
+      hours: 48,
+      line: GRAPH_POINTS[2].text,
+      big: "48~72시간",
+      note: SIM_SAMPLE.coachCaption,
+    },
+    {
+      id: "h72",
+      day: firstAfterDay + 2,
+      label: `${dayName(firstAfterDay + 2)} · ${GRAPH_POINTS[3].label}`,
+      weather: "sunny",
+      hours: 72,
+      line: GRAPH_POINTS[3].text,
+      big: SIM_SAMPLE.fat,
+      note: SIM_SAMPLE.fatNote,
+    },
+  ];
+};
+
+// 회식(하루): 목 24(오늘) 전날 → 금 25 회식 → 토 24시간 → 일 48시간 → 월 72시간. 화·수는 스트립에만 보인다.
+export const STORY_SAMPLE: ForecastStory = {
+  title: SIM_SAMPLE.title,
+  amount: SIM_SAMPLE.amount,
+  days: WEEK_SAMPLE_EMPTY,
+  event: { label: "회식", day: 1, span: 1 },
+  scenes: [
+    {
+      id: "before",
+      day: 0,
+      label: "목요일 · 회식 전날",
+      weather: "sunny",
+      hours: null,
+      line: GUIDE_SAMPLE.before[0],
+      big: SIM_SAMPLE.amount,
+      note: "이번 예보의 기준 섭취량이에요",
+    },
+    ...afterScenes({ id: "event", day: 1, label: "금요일 · 회식 직후" }, 2, WEEK_SAMPLE_EMPTY),
+  ],
+};
+
+// 여러 날 이벤트(여행) 미리보기: 금~일을 블록 하나로 묶고, 끝난 뒤부터 72시간을 따라간다.
+// 기간 전체를 한 건으로 보는 규칙만 보여주는 샘플이라 수치는 회식 검증 예시와 같다.
+const TRIP_DAYS: WeekDay[] = [
+  { dow: "목", date: "24", weather: "sunny", today: true },
+  { dow: "금", date: "25", weather: "rain" },
+  { dow: "토", date: "26", weather: "rain" },
+  { dow: "일", date: "27", weather: "rain" },
+  { dow: "월", date: "28", weather: "cloudy" },
+  { dow: "화", date: "29", weather: "sunny" },
+  { dow: "수", date: "30", weather: "sunny" },
+];
+
+export const STORY_TRIP_SAMPLE: ForecastStory = {
+  title: "제주 여행",
+  amount: `기간 전체 ${SIM_SAMPLE.amount}`,
+  days: TRIP_DAYS,
+  event: { label: "제주 여행", day: 1, span: 3 },
+  scenes: [
+    {
+      id: "before",
+      day: 0,
+      label: "목요일 · 여행 전날",
+      weather: "sunny",
+      hours: null,
+      line: GUIDE_SAMPLE.before[0],
+      big: SIM_SAMPLE.amount,
+      note: "여행 기간 전체를 하나로 본 기준이에요",
+    },
+    ...afterScenes({ id: "event", day: 1, label: "금~일 · 여행이 끝난 직후" }, 4, TRIP_DAYS),
+  ],
+};
+
+
 // ── 기록 ──────────────────────────────────────────────────
 
 export interface LogItem {

@@ -30,7 +30,9 @@ const GROUPS: { title: string; links: { href: string; label: string }[] }[] = [
       { href: "/app/forecast", label: "예보 목록" },
       { href: "/app/forecast?state=empty", label: "예보 목록(빈 상태)" },
       { href: "/app/event/new", label: "이벤트 등록" },
-      { href: "/app/event/sample-1/simulation", label: "예보 결과" },
+      { href: "/app/event/sample-1/simulation", label: "예보 결과 (한 주 미리 보기)" },
+      { href: "/app/event/sample-1/simulation?scene=2", label: "예보 결과 · 다음 날 장면부터" },
+      { href: "/app/event/sample-1/simulation?event=trip", label: "예보 결과 · 여러 날 이벤트(여행 블록)" },
     ],
   },
   {
