@@ -191,7 +191,8 @@ export interface ForecastScene {
 export interface ForecastStory {
   title: string;
   amount: string;
-  days: WeekDay[]; // 날짜 스트립 7칸(이벤트 날짜 기준, 수렴 72시간이 창 안에 들어온다)
+  days: WeekDay[]; // 날짜 스트립 7칸. 항상 "오늘 + 0~6일"로 고정(이벤트 날짜에 맞춰 당기거나 넓히지 않는다).
+  // 이벤트/72시간 수렴 구간이 이 범위를 벗어나면 이번 주 스트립엔 그 부분이 안 보여도 된다 — days는 그대로 오늘 기준.
   event: { label: string; day: number; span: number }; // 여러 날 이벤트도 블록 하나(SIMULATION.md 4장 6)
   scenes: ForecastScene[];
 }

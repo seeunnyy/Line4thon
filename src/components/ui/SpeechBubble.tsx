@@ -16,13 +16,13 @@ export default function SpeechBubble({
 }) {
   return (
     <div
-      className={`relative rounded-card bg-white px-5 py-4 text-left shadow-coach after:absolute after:left-1/2 after:top-full after:-mt-[6px] after:h-3 after:w-3 after:-translate-x-1/2 after:rotate-45 after:bg-white after:content-[''] ${className}`}
+      className={`relative rounded-card bg-white px-5 py-4 text-center shadow-coach after:absolute after:left-1/2 after:top-full after:-mt-[6px] after:h-3 after:w-3 after:-translate-x-1/2 after:rotate-45 after:bg-white after:content-[''] ${className}`}
     >
-      <div className="flex items-center gap-1 text-body text-cobalt">
+      <div className="flex items-center justify-center gap-1 text-body text-cobalt">
         <Icon name={icon} size={16} />
         <span>{label}</span>
       </div>
-      <p className="mt-1 text-lead">{children}</p>
+      <p className="mt-1 break-keep text-lead">{children}</p>
     </div>
   );
 }
