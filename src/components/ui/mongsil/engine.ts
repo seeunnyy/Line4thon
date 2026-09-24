@@ -1,21 +1,46 @@
 // 몽실이 2.5D 엔진. 의존성 없는 직접 작성 WebGL(3D 라이브러리 아님).
 // - 렌더 한 장(mongsil-*.png)을 격자 메시로 깔고, 깊이맵(mongsil-*-depth.png)으로 볼록하게 만든 뒤
 //   요/피치/롤 회전 + 스쿼시&스트레치 + 젤리 기울기로 움직인다. 원근 없는 정사영이라 기본 자세는 원본 이미지와 똑같다.
-// - 소나기는 눈·눈썹을 따로 떼어(rain-*.png) 깜빡임/눈동자 이동/눈썹 올림을 준다.
+// - 부위별 스키닝: 고개 갸웃(머리 가중치), 팔·가방·발 들기는 가우시안 영역을 회전/이동시킨다(말랑한 인형 느낌).
+// - 소나기의 우산은 몸에서 분리된 부품 두 장(뒤 우산 = 윗면·안쪽 / 앞 막대 = 손잡이·막대)이라 몸과 따로 흔들린다.
+// - 표정: 얼굴 부품(눈 열림/감김/웃음눈, 입 굽힘·O, 눈썹, 선글라스)은 mongsil-*-parts.png 아틀라스의 별도 메시이고,
+//   부품을 지운 빈 얼굴(patch)이 원본 얼굴 위를 덮는다. 기본 표정으로 합치면 원본 렌더와 같다.
 // - 그림 위에 보이는 소품(해·구름·빗방울)은 여기 없고 Mongsil.tsx의 CSS 애니메이션이다.
+import { FACE, SMILE, UMBRELLA, type SpriteName } from "./faceData";
 import type { Box, MongsilWeather } from "./layout";
 
-export type EyePose = { blink?: number; lookX?: number; lookY?: number; browY?: number };
+export type EyeMix = { open: number; calm: number; happy: number };
+export type Face = {
+  eyeL: EyeMix; // 눈 종류 섞임(0~1): 뜬 눈 / 감은 눈(‿) / 웃는 눈(⌒)
+  eyeR: EyeMix;
+  blinkL: number; // 뜬 눈이 감기는 정도(0~1)
+  blinkR: number;
+  lookX: number; // 눈동자 이동(px)
+  lookY: number;
+  browY: number; // 눈썹 위아래(px, 음수 = 위). 소나기만 눈썹이 있다
+  smile: number; // 입: 0 = 일자(무표정), 1 = 원본 미소, 1.6 = 활짝
+  mouthO: number; // 놀란 입(O) 0~1
+  glasses: number; // 선글라스: 0 = 쓴 상태, 1 = 이마 위로 올림 (맑음만)
+};
 export type Pose = {
   yaw?: number; // 좌우 고개 돌림(rad)
   pitch?: number; // 끄덕임(rad)
-  roll?: number; // 갸웃(rad)
+  roll?: number; // 몸 전체 갸웃(rad)
   lean?: number; // 젤리 기울기(몸 높이 대비 비율)
   squash?: number; // 발 기준 세로 배율(1 = 그대로)
-  bob?: number; // 위아래(이미지 px, 음수 = 위)
+  bob?: number; // 위아래(몸 그림 px, 음수 = 위)
+  travel?: number; // 좌우 이동(몸 그림 px, 양수 = 오른쪽)
+  headTilt?: number; // 머리만 갸웃(rad, 양수 = 시계 방향)
+  headShiftX?: number; // 머리가 기울면서 옆으로 쏠림(px)
+  headShiftY?: number;
+  armL?: number; // 화면 왼쪽 팔(rad)
+  armR?: number; // 화면 오른쪽 팔(소나기는 우산 전체)
+  bag?: number; // 가방 흔들림(rad)
+  footL?: number; // 발 들기(px)
+  footR?: number;
   shadeK?: number; // 회전에 따른 음영 변화 세기
   glint?: number; // 선글라스 반짝임 위치(-5 이하 = 꺼짐)
-  eye?: EyePose;
+  face?: Partial<Face>;
 };
 
 export type MongsilEngine = {
@@ -24,8 +49,15 @@ export type MongsilEngine = {
   dispose: () => void;
 };
 
-// 캔버스는 몸 그림보다 사방으로 조금 크다(고개를 돌리거나 뛸 때 삐져나가는 곳).
-export const CANVAS_MARGIN = { x: 0.07, top: 0.1, bottom: 0.03 } as const;
+// 원본 렌더의 표정(정지 그림과 같은 얼굴). 안무는 여기서 출발해서 여기로 돌아온다.
+export const REST_FACE: Record<MongsilWeather, Face> = {
+  sunny: { eyeL: { open: 0, calm: 0, happy: 0 }, eyeR: { open: 0, calm: 0, happy: 0 }, blinkL: 0, blinkR: 0, lookX: 0, lookY: 0, browY: 0, smile: 1, mouthO: 0, glasses: 0 },
+  cloudy: { eyeL: { open: 0, calm: 1, happy: 0 }, eyeR: { open: 0, calm: 1, happy: 0 }, blinkL: 0, blinkR: 0, lookX: 0, lookY: 0, browY: 0, smile: 1, mouthO: 0, glasses: 0 },
+  rain: { eyeL: { open: 1, calm: 0, happy: 0 }, eyeR: { open: 1, calm: 0, happy: 0 }, blinkL: 0, blinkR: 0, lookX: 0, lookY: 0, browY: 0, smile: 0, mouthO: 1, glasses: 0 },
+};
+
+// 캔버스는 몸 그림보다 사방으로 조금 크다(걷거나 뛰거나 고개를 갸웃할 때 삐져나가는 곳).
+export const CANVAS_MARGIN = { x: 0.28, top: 0.1, bottom: 0.03 } as const;
 export function canvasBox(body: Box): Box {
   return {
     x: body.x - body.w * CANVAS_MARGIN.x,
@@ -35,31 +67,88 @@ export function canvasBox(body: Box): Box {
   };
 }
 
-// 몸 그림 좌표계에서 발 가운데(움직임의 기준점)
-const PIVOT: Record<MongsilWeather, [number, number]> = { sunny: [212, 520], cloudy: [211, 520], rain: [205, 631] };
-// 소나기 얼굴 부품(몸 그림 좌표계)
-const RAIN_PARTS = {
-  patch: { x: 123, y: 207, w: 163, h: 94 },
-  browL: { x: 134, y: 218, w: 33, h: 20 },
-  browR: { x: 243, y: 217, w: 34, h: 20 },
-  eyeL: { x: 133, y: 251, w: 34, h: 40 },
-  eyeR: { x: 241, y: 251, w: 35, h: 40 },
-} as const satisfies Record<string, Box>;
-type PartName = keyof typeof RAIN_PARTS;
-const PART_NAMES = Object.keys(RAIN_PARTS) as PartName[];
+// 몸 그림 좌표계의 뼈대 값. pivot = 발 가운데(움직임의 기준점).
+type Limb = { c: [number, number]; s: [number, number]; p: [number, number] };
+type Rig = {
+  pivot: [number, number];
+  head: { p: [number, number]; y0: number; y1: number };
+  armL: Limb;
+  armR: Limb;
+  bag: Limb;
+  footL: Limb;
+  footR: Limb;
+  umbrella?: { p: [number, number]; z: number }; // 우산을 든 손 자리(우산이 돌아가는 중심)와 우산의 깊이
+};
+export const RIG: Record<MongsilWeather, Rig> = {
+  sunny: {
+    pivot: [212, 520],
+    head: { p: [212, 290], y0: 200, y1: 335 },
+    armL: { c: [48, 322], s: [46, 78], p: [88, 268] },
+    armR: { c: [380, 305], s: [44, 58], p: [352, 268] },
+    bag: { c: [365, 398], s: [40, 52], p: [335, 340] },
+    footL: { c: [140, 497], s: [58, 36], p: [140, 497] },
+    footR: { c: [292, 497], s: [58, 36], p: [292, 497] },
+  },
+  cloudy: {
+    pivot: [211, 520],
+    head: { p: [211, 290], y0: 200, y1: 335 },
+    armL: { c: [48, 322], s: [46, 78], p: [88, 268] },
+    armR: { c: [380, 305], s: [44, 58], p: [352, 268] },
+    bag: { c: [365, 398], s: [40, 52], p: [335, 340] },
+    footL: { c: [140, 497], s: [58, 36], p: [140, 497] },
+    footR: { c: [292, 497], s: [58, 36], p: [292, 497] },
+  },
+  rain: {
+    pivot: [205, 631],
+    head: { p: [205, 400], y0: 310, y1: 445 },
+    armL: { c: [47, 438], s: [46, 78], p: [88, 380] },
+    armR: { c: [382, 383], s: [44, 62], p: [368, 400] }, // 우산을 든 손(주먹): 우산과 같은 중심으로 돌아간다
+    bag: { c: [362, 508], s: [40, 52], p: [332, 450] },
+    footL: { c: [128, 612], s: [58, 36], p: [128, 612] },
+    footR: { c: [292, 612], s: [58, 36], p: [292, 612] },
+    umbrella: { p: [368, 400], z: 88 },
+  },
+};
 
 const CELL = 6; // 메시 한 칸(px). 작을수록 얇은 부분(우산 손잡이)이 덜 일그러진다.
-const DEPTH_SCALE = 2; // 깊이 PNG: 8비트 값 = z(px) × 2, 가로세로 절반 해상도
+const DEPTH_SCALE = 2; // 깊이 PNG: 밝기 = z(px) × 2, 가로세로 절반 해상도
 
 const VS = `
-attribute vec2 a_uv; attribute float a_z; attribute vec2 a_n;
-uniform vec4 u_rect; uniform vec4 u_ltf; uniform vec2 u_ltr;
+attribute vec2 a_uv; attribute float a_z; attribute vec2 a_n; attribute float a_b;
+uniform vec4 u_rect; uniform vec4 u_uvr; uniform vec4 u_ltf; uniform vec3 u_ltr; uniform float u_bend;
 uniform vec2 u_size; uniform vec2 u_pivot; uniform vec2 u_canvas; uniform vec2 u_off;
 uniform vec3 u_rot; uniform vec3 u_pose;
-varying vec2 v_uv; varying float v_shade; varying float v_shade0;
+uniform vec4 u_head; uniform vec3 u_headA; uniform float u_skin; uniform vec3 u_umb;
+uniform vec4 u_limbA[5]; uniform vec4 u_limbB[5]; uniform vec2 u_limbC[5];
+varying vec2 v_uv; varying vec2 v_luv; varying float v_shade; varying float v_shade0;
 void main(){
   vec2 pi = u_rect.xy + a_uv * u_rect.zw;
-  pi = u_ltf.xy + (pi - u_ltf.xy) * u_ltf.zw + u_ltr;
+  pi.y -= u_bend * a_b;
+  vec2 lr = (pi - u_ltf.xy) * u_ltf.zw;
+  float cl = cos(u_ltr.z), sl = sin(u_ltr.z);
+  pi = u_ltf.xy + vec2(lr.x * cl - lr.y * sl, lr.x * sl + lr.y * cl) + u_ltr.xy;
+  // 부위별 스키닝 (모든 변위는 같은 기준 위치에서 계산해서 더한다)
+  vec2 d = vec2(0.0);
+  if (u_skin > 0.5) {
+    // 우산 부품: 손 자리를 중심으로 통째로 돌아간다
+    vec2 ru = pi - u_umb.xy;
+    float cu = cos(u_umb.z), su = sin(u_umb.z);
+    d = vec2(ru.x * cu - ru.y * su, ru.x * su + ru.y * cu) - ru;
+  } else {
+    float wh = 1.0 - smoothstep(u_head.z, u_head.w, pi.y);
+    vec2 rh = pi - u_head.xy;
+    float ch = cos(u_headA.x), sh = sin(u_headA.x);
+    d += wh * (vec2(rh.x * ch - rh.y * sh, rh.x * sh + rh.y * ch) - rh + u_headA.yz);
+    for (int i = 0; i < 5; i++) {
+      vec4 A = u_limbA[i]; vec4 B = u_limbB[i];
+      vec2 q = (pi - A.xy) / A.zw;
+      float w = exp(-0.5 * dot(q, q));
+      float c = cos(B.z), s = sin(B.z);
+      vec2 rr = pi - B.xy;
+      d += w * (vec2(rr.x * c - rr.y * s, rr.x * s + rr.y * c) - rr + u_limbC[i]);
+    }
+  }
+  pi += d;
   vec3 p = vec3(pi - u_pivot, a_z);
   vec3 n0 = vec3(a_n, sqrt(max(0.0, 1.0 - dot(a_n, a_n))));
   vec3 n = n0;
@@ -72,8 +161,8 @@ void main(){
   n = vec3(n.x * cy + n.z * sy, n.y, -n.x * sy + n.z * cy);
   float cp = cos(u_rot.y), sp = sin(u_rot.y);
   float ty = -0.5 * u_size.y;
-  vec3 q = p - vec3(0.0, ty, 0.0);
-  p = vec3(q.x, q.y * cp + q.z * sp, -q.y * sp + q.z * cp) + vec3(0.0, ty, 0.0);
+  vec3 q3 = p - vec3(0.0, ty, 0.0);
+  p = vec3(q3.x, q3.y * cp + q3.z * sp, -q3.y * sp + q3.z * cp) + vec3(0.0, ty, 0.0);
   n = vec3(n.x, n.y * cp + n.z * sp, -n.y * sp + n.z * cp);
   float cr = cos(u_rot.z), sr = sin(u_rot.z);
   p.xy = vec2(p.x * cr - p.y * sr, p.x * sr + p.y * cr);
@@ -81,7 +170,8 @@ void main(){
   p.y += u_pose.z;
   vec2 c = p.xy + u_pivot + u_off;
   gl_Position = vec4(c.x / u_canvas.x * 2.0 - 1.0, 1.0 - c.y / u_canvas.y * 2.0, 0.0, 1.0);
-  v_uv = a_uv;
+  v_uv = u_uvr.xy + a_uv * u_uvr.zw;
+  v_luv = a_uv;
   vec3 L = normalize(vec3(-0.45, -0.55, 0.70));
   v_shade = dot(n, L);
   v_shade0 = dot(n0, L);
@@ -94,7 +184,7 @@ precision highp float;
 precision mediump float;
 #endif
 uniform sampler2D u_tex; uniform float u_alpha; uniform float u_shadeK; uniform float u_glint;
-varying vec2 v_uv; varying float v_shade; varying float v_shade0;
+varying vec2 v_uv; varying vec2 v_luv; varying float v_shade; varying float v_shade0;
 void main(){
   vec4 c = texture2D(u_tex, v_uv);
   float k = 1.0 + u_shadeK * (v_shade - v_shade0);
@@ -103,7 +193,7 @@ void main(){
     vec3 un = c.rgb / max(c.a, 0.001);
     float lum = dot(un, vec3(0.299, 0.587, 0.114));
     float lens = (1.0 - smoothstep(0.10, 0.24, lum)) * step(0.9, c.a);
-    float d = abs(v_uv.x + 0.35 * v_uv.y - u_glint);
+    float d = abs(v_luv.x + 0.35 * v_luv.y - u_glint);
     float I = smoothstep(0.075, 0.0, d);
     c.rgb += vec3(0.55) * I * lens * c.a;
   }
@@ -119,7 +209,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-type Depth = { w: number; h: number; g: Float32Array };
+type Depth = { w: number; h: number; z: Float32Array };
 function readDepth(img: HTMLImageElement): Depth {
   const c = document.createElement("canvas");
   c.width = img.naturalWidth;
@@ -128,23 +218,23 @@ function readDepth(img: HTMLImageElement): Depth {
   if (!x) throw new Error("no 2d context");
   x.drawImage(img, 0, 0);
   const d = x.getImageData(0, 0, c.width, c.height).data;
-  const g = new Float32Array(c.width * c.height);
-  for (let i = 0; i < g.length; i++) g[i] = d[i * 4] / DEPTH_SCALE; // px
-  return { w: c.width, h: c.height, g };
+  const z = new Float32Array(c.width * c.height);
+  for (let i = 0; i < z.length; i++) z[i] = d[i * 4] / DEPTH_SCALE; // px
+  return { w: c.width, h: c.height, z };
 }
 
-// 이미지 px 좌표의 z(px). 깊이 PNG는 절반 해상도라 쌍선형 보간.
-function sampleZ(D: Depth, x: number, y: number): number {
+// 이미지 px 좌표의 값(깊이 PNG는 절반 해상도라 쌍선형 보간).
+function sample(D: Depth, g: Float32Array, x: number, y: number): number {
   const fx = Math.min(D.w - 1.001, Math.max(0, x / 2 - 0.5));
   const fy = Math.min(D.h - 1.001, Math.max(0, y / 2 - 0.5));
   const x0 = Math.floor(fx);
   const y0 = Math.floor(fy);
   const tx = fx - x0;
   const ty = fy - y0;
-  const a = D.g[y0 * D.w + x0];
-  const b = D.g[y0 * D.w + x0 + 1];
-  const c = D.g[(y0 + 1) * D.w + x0];
-  const d = D.g[(y0 + 1) * D.w + x0 + 1];
+  const a = g[y0 * D.w + x0];
+  const b = g[y0 * D.w + x0 + 1];
+  const c = g[(y0 + 1) * D.w + x0];
+  const d = g[(y0 + 1) * D.w + x0 + 1];
   return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
 }
 
@@ -163,9 +253,13 @@ type Layer = {
   ib: WebGLBuffer;
   count: number;
   rect: Box;
-  cx: number;
-  cy: number;
+  uvr: [number, number, number, number];
+  fx: number; // 축소·확대의 기준점(부품이면 눈·입의 중심)
+  fy: number;
 };
+type LayerOpts = { lift?: number; bend?: boolean; uvr?: [number, number, number, number]; fc?: [number, number]; z?: number };
+
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 export async function createEngine(
   canvas: HTMLCanvasElement,
@@ -178,11 +272,14 @@ export async function createEngine(
   if (!ctx) throw new Error("no webgl");
   const gl: WebGLRenderingContext = ctx;
 
-  const partFiles = PART_NAMES.map((n) => `rain-${n}.png`);
-  const [img, dimg, ...partImgs] = await Promise.all([
-    loadImage(resolve(`mongsil-${weather}.png`)),
+  const rigInfo = RIG[weather];
+  const hasUmbrella = !!rigInfo.umbrella;
+  // 소나기는 우산을 지운 몸 그림(-body)을 쓴다. 우산은 별도 시트.
+  const [img, dimg, aimg, uimg] = await Promise.all([
+    loadImage(resolve(hasUmbrella ? `mongsil-${weather}-body.png` : `mongsil-${weather}.png`)),
     loadImage(resolve(`mongsil-${weather}-depth.png`)),
-    ...(weather === "rain" ? partFiles.map((f) => loadImage(resolve(f))) : []),
+    loadImage(resolve(`mongsil-${weather}-parts.png`)),
+    hasUmbrella ? loadImage(resolve(`mongsil-${weather}-umbrella.png`)) : Promise.resolve(null),
   ]);
   const D = readDepth(dimg);
   const W = img.naturalWidth;
@@ -191,6 +288,8 @@ export async function createEngine(
   const marginTop = CANVAS_MARGIN.top * H;
   const CW = W * (1 + 2 * CANVAS_MARGIN.x);
   const CH = H * (1 + CANVAS_MARGIN.top + CANVAS_MARGIN.bottom);
+  const face = FACE[weather];
+  const rig = RIG[weather];
 
   const prog = gl.createProgram();
   if (!prog) throw new Error("no program");
@@ -202,10 +301,19 @@ export async function createEngine(
   if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog) ?? "link failed");
   gl.useProgram(prog);
 
-  const uniformNames = ["u_rect", "u_ltf", "u_ltr", "u_size", "u_pivot", "u_canvas", "u_off", "u_rot", "u_pose", "u_tex", "u_alpha", "u_shadeK", "u_glint"] as const;
+  const uniformNames = [
+    "u_rect", "u_uvr", "u_ltf", "u_ltr", "u_bend", "u_size", "u_pivot", "u_canvas", "u_off", "u_rot", "u_pose",
+    "u_head", "u_headA", "u_skin", "u_umb", "u_limbA", "u_limbB", "u_limbC", "u_tex", "u_alpha", "u_shadeK", "u_glint",
+  ] as const;
   const U = {} as Record<(typeof uniformNames)[number], WebGLUniformLocation | null>;
   for (const n of uniformNames) U[n] = gl.getUniformLocation(prog, n);
-  const A = { uv: gl.getAttribLocation(prog, "a_uv"), z: gl.getAttribLocation(prog, "a_z"), n: gl.getAttribLocation(prog, "a_n") };
+  const A = {
+    uv: gl.getAttribLocation(prog, "a_uv"),
+    z: gl.getAttribLocation(prog, "a_z"),
+    n: gl.getAttribLocation(prog, "a_n"),
+    b: gl.getAttribLocation(prog, "a_b"),
+  };
+  const STRIDE = 6 * 4;
 
   const textures: WebGLTexture[] = [];
   const buffers: WebGLBuffer[] = [];
@@ -223,23 +331,38 @@ export async function createEngine(
     textures.push(t);
     return t;
   }
+  const bodyTex = texture(img);
+  const partsTex = texture(aimg);
 
-  function layer(image: HTMLImageElement, rect: Box, nx: number, ny: number, lift = 0): Layer {
+  function layer(tex: WebGLTexture, rect: Box, nx: number, ny: number, o: LayerOpts = {}): Layer {
+    const lift = o.lift ?? 0;
     const verts: number[] = [];
     const idx: number[] = [];
-    const zf = (x: number, y: number) => sampleZ(D, Math.min(W - 1, Math.max(0, x)), Math.min(H - 1, Math.max(0, y)));
+    const cx = (x: number) => Math.min(W - 1, Math.max(0, x));
+    const cy = (y: number) => Math.min(H - 1, Math.max(0, y));
+    const zf = (x: number, y: number) => sample(D, D.z, cx(x), cy(y));
     for (let j = 0; j <= ny; j++) {
       for (let i = 0; i <= nx; i++) {
         const u = i / nx;
         const v = j / ny;
         const x = rect.x + u * rect.w;
         const y = rect.y + v * rect.h;
-        const z = zf(x, y) + lift;
-        const e = 4;
-        const dzx = (zf(x + e, y) - zf(x - e, y)) / (2 * e);
-        const dzy = (zf(x, y + e) - zf(x, y - e)) / (2 * e);
+        const z = o.z ?? zf(x, y) + lift;
+        const e = 14; // 음영용 기울기는 넓게 재서 깊이 능선이 각져 보이지 않게 한다
+        const dzx = o.z != null ? 0 : (zf(x + e, y) - zf(x - e, y)) / (2 * e);
+        const dzy = o.z != null ? 0 : (zf(x, y + e) - zf(x, y - e)) / (2 * e);
         const l = Math.hypot(dzx, dzy, 1);
-        verts.push(u, v, z, -dzx / l, -dzy / l);
+        // 입 굽힘 곡선(부품 그림 안 x 위치 → 처짐 px)
+        let bend = 0;
+        if (o.bend) {
+          const sx = u * rect.w;
+          if (sx >= SMILE.x0 && sx <= SMILE.x1) {
+            const k = Math.min(SMILE.sag.length - 1.001, Math.max(0, sx - SMILE.x0));
+            const k0 = Math.floor(k);
+            bend = SMILE.sag[k0] * (1 - (k - k0)) + SMILE.sag[k0 + 1] * (k - k0);
+          }
+        }
+        verts.push(u, v, z, -dzx / l, -dzy / l, bend);
       }
     }
     for (let j = 0; j < ny; j++) {
@@ -259,46 +382,82 @@ export async function createEngine(
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
     buffers.push(vb, ib);
-    return { tex: texture(image), vb, ib, count: idx.length, rect, cx: rect.x + rect.w / 2, cy: rect.y + rect.h / 2 };
+    return { tex, vb, ib, count: idx.length, rect, uvr: o.uvr ?? [0, 0, 1, 1], fx: o.fc?.[0] ?? rect.x + rect.w / 2, fy: o.fc?.[1] ?? rect.y + rect.h / 2 };
   }
 
-  const body = layer(img, { x: 0, y: 0, w: W, h: H }, Math.ceil(W / CELL), Math.ceil(H / CELL));
-  let parts: Record<PartName, Layer> | null = null;
-  if (weather === "rain") {
-    const p = {} as Record<PartName, Layer>;
-    PART_NAMES.forEach((n, i) => {
-      const isSkin = n === "patch";
-      // 눈·눈썹은 얼굴 표면보다 살짝 앞(lift)에 둬서 고개를 돌려도 피부 속으로 파묻히지 않게 한다.
-      p[n] = layer(partImgs[i], RAIN_PARTS[n], isSkin ? 12 : 4, isSkin ? 8 : 4, isSkin ? 0 : 2);
-    });
-    parts = p;
+  const body = layer(bodyTex, { x: 0, y: 0, w: W, h: H }, Math.ceil(W / CELL), Math.ceil(H / CELL));
+  const AW = face.atlas.w;
+  const AH = face.atlas.h;
+  const patch = layer(
+    partsTex,
+    { x: face.patch.x, y: face.patch.y, w: face.patch.w, h: face.patch.h },
+    Math.ceil(face.patch.w / CELL),
+    Math.ceil(face.patch.h / CELL),
+    { uvr: [face.patch.ax / AW, face.patch.ay / AH, face.patch.w / AW, face.patch.h / AH] },
+  );
+  const sprites: Partial<Record<SpriteName, Layer>> = {};
+  const LIFT: Record<SpriteName, number> = { glasses: 6, eyeL: 2, eyeR: 2, arcL: 2, arcR: 2, arcUpL: 2, arcUpR: 2, smile: 1.5, mouthO: 1.5, browL: 2, browR: 2 };
+  for (const [name, sp] of Object.entries(face.sprites) as [SpriteName, NonNullable<(typeof face.sprites)[SpriteName]>][]) {
+    const nx = name === "smile" ? 20 : name === "glasses" ? 18 : 6;
+    const ny = name === "glasses" ? 6 : name === "smile" ? 3 : 4;
+    sprites[name] = layer(
+      partsTex,
+      { x: sp.cx - sp.ox, y: sp.cy - sp.oy, w: sp.w, h: sp.h },
+      nx,
+      ny,
+      { lift: LIFT[name], bend: name === "smile", fc: [sp.cx, sp.cy], uvr: [sp.ax / AW, sp.ay / AH, sp.w / AW, sp.h / AH] },
+    );
+  }
+
+  // 우산 부품(소나기만)
+  let umbBack: Layer | null = null;
+  let umbFront: Layer | null = null;
+  if (rigInfo.umbrella && uimg) {
+    const utex = texture(uimg);
+    const mk = (part: typeof UMBRELLA.back) =>
+      layer(utex, { x: part.x, y: part.y, w: part.w, h: part.h }, Math.ceil(part.w / 12), Math.ceil(part.h / 12), {
+        z: rigInfo.umbrella!.z,
+        uvr: [part.ax / UMBRELLA.sheet.w, part.ay / UMBRELLA.sheet.h, part.w / UMBRELLA.sheet.w, part.h / UMBRELLA.sheet.h],
+      });
+    umbBack = mk(UMBRELLA.back);
+    umbFront = mk(UMBRELLA.front);
   }
 
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
   gl.clearColor(0, 0, 0, 0);
 
-  function draw(L: Layer, ltf?: [number, number, number, number], ltr?: [number, number]) {
+  // 레이어마다 다른 값(로컬 변형·투명도·입 굽힘)
+  type Draw = { tf?: [number, number, number, number]; tr?: [number, number]; rot?: number; alpha?: number; bend?: number };
+  function draw(L: Layer, o: Draw = {}) {
     const g = gl;
     g.bindBuffer(g.ARRAY_BUFFER, L.vb);
     g.bindBuffer(g.ELEMENT_ARRAY_BUFFER, L.ib);
     g.enableVertexAttribArray(A.uv);
-    g.vertexAttribPointer(A.uv, 2, g.FLOAT, false, 20, 0);
+    g.vertexAttribPointer(A.uv, 2, g.FLOAT, false, STRIDE, 0);
     g.enableVertexAttribArray(A.z);
-    g.vertexAttribPointer(A.z, 1, g.FLOAT, false, 20, 8);
+    g.vertexAttribPointer(A.z, 1, g.FLOAT, false, STRIDE, 8);
     g.enableVertexAttribArray(A.n);
-    g.vertexAttribPointer(A.n, 2, g.FLOAT, false, 20, 12);
+    g.vertexAttribPointer(A.n, 2, g.FLOAT, false, STRIDE, 12);
+    g.enableVertexAttribArray(A.b);
+    g.vertexAttribPointer(A.b, 1, g.FLOAT, false, STRIDE, 20);
     g.bindTexture(g.TEXTURE_2D, L.tex);
     g.uniform4f(U.u_rect, L.rect.x, L.rect.y, L.rect.w, L.rect.h);
-    const t = ltf ?? [L.cx, L.cy, 1, 1];
+    g.uniform4f(U.u_uvr, L.uvr[0], L.uvr[1], L.uvr[2], L.uvr[3]);
+    const t = o.tf ?? [L.fx, L.fy, 1, 1];
     g.uniform4f(U.u_ltf, t[0], t[1], t[2], t[3]);
-    const r = ltr ?? [0, 0];
-    g.uniform2f(U.u_ltr, r[0], r[1]);
-    g.uniform1f(U.u_alpha, 1);
+    const r = o.tr ?? [0, 0];
+    g.uniform3f(U.u_ltr, r[0], r[1], o.rot ?? 0);
+    g.uniform1f(U.u_bend, o.bend ?? 0);
+    g.uniform1f(U.u_alpha, o.alpha ?? 1);
     g.drawElements(g.TRIANGLES, L.count, g.UNSIGNED_SHORT, 0);
   }
 
-  const pivot = PIVOT[weather];
+  const limbs = [rig.armL, rig.armR, rig.bag, rig.footL, rig.footR];
+  const limbA = new Float32Array(limbs.flatMap((l) => [l.c[0], l.c[1], l.s[0], l.s[1]]));
+  const limbB = new Float32Array(5 * 4);
+  const limbC = new Float32Array(5 * 2);
+  const pivot = rig.pivot;
 
   function render(P: Pose) {
     const g = gl;
@@ -306,26 +465,85 @@ export async function createEngine(
     g.uniform2f(U.u_size, W, H);
     g.uniform2f(U.u_pivot, pivot[0], pivot[1]);
     g.uniform2f(U.u_canvas, CW, CH);
-    g.uniform2f(U.u_off, marginX, marginTop);
+    g.uniform2f(U.u_off, marginX + (P.travel ?? 0), marginTop);
     g.uniform3f(U.u_rot, P.yaw ?? 0, P.pitch ?? 0, P.roll ?? 0);
     g.uniform3f(U.u_pose, P.lean ?? 0, P.squash ?? 1, P.bob ?? 0);
     g.uniform1f(U.u_shadeK, P.shadeK ?? 0.5);
     g.uniform1i(U.u_tex, 0);
-    g.uniform1f(U.u_glint, P.glint ?? -10);
+    // 스키닝 값
+    g.uniform4f(U.u_head, rig.head.p[0], rig.head.p[1], rig.head.y0, rig.head.y1);
+    g.uniform3f(U.u_headA, P.headTilt ?? 0, P.headShiftX ?? 0, P.headShiftY ?? 0);
+    const ang = [P.armL ?? 0, P.armR ?? 0, P.bag ?? 0, 0, 0];
+    const lift = [0, 0, 0, P.footL ?? 0, P.footR ?? 0];
+    limbs.forEach((l, i) => {
+      limbB[i * 4] = l.p[0];
+      limbB[i * 4 + 1] = l.p[1];
+      limbB[i * 4 + 2] = ang[i];
+      limbB[i * 4 + 3] = 0;
+      limbC[i * 2] = 0;
+      limbC[i * 2 + 1] = -lift[i];
+    });
+    g.uniform1f(U.u_skin, 0);
+    g.uniform4fv(U.u_limbA, limbA);
+    g.uniform4fv(U.u_limbB, limbB);
+    g.uniform2fv(U.u_limbC, limbC);
+
+    const f: Face = { ...REST_FACE[weather], ...P.face };
+    g.uniform1f(U.u_glint, -10);
+    // 우산(뒤) → 몸 → 얼굴 … → 우산 막대(앞)
+    const um = rigInfo.umbrella;
+    const drawUmbrella = (L: Layer | null) => {
+      if (!L || !um) return;
+      g.uniform1f(U.u_skin, 1);
+      g.uniform3f(U.u_umb, um.p[0], um.p[1], P.armR ?? 0);
+      draw(L);
+      g.uniform1f(U.u_skin, 0);
+    };
+    drawUmbrella(umbBack);
     draw(body);
-    if (parts) {
-      g.uniform1f(U.u_glint, -10);
-      draw(parts.patch);
-      const e = P.eye ?? {};
-      const brow = e.browY ?? 0;
-      const lx = e.lookX ?? 0;
-      const ly = e.lookY ?? 0;
-      const bl = e.blink ?? 0;
-      draw(parts.browL, undefined, [lx * 0.5, brow]);
-      draw(parts.browR, undefined, [lx * 0.5, brow]);
-      const sy = 1 - 0.92 * bl;
-      const sx = 1 + 0.1 * bl;
-      for (const L of [parts.eyeL, parts.eyeR]) draw(L, [L.cx, L.cy, sx, sy], [lx, ly]);
+    draw(patch);
+
+    const lx = f.lookX;
+    const ly = f.lookY;
+    const eyes: [SpriteName, SpriteName, SpriteName, EyeMix, number][] = [
+      ["eyeL", "arcL", "arcUpL", f.eyeL, f.blinkL],
+      ["eyeR", "arcR", "arcUpR", f.eyeR, f.blinkR],
+    ];
+    for (const [open, calm, happy, mix, blink] of eyes) {
+      const eo = sprites[open];
+      if (eo && mix.open > 0.01) {
+        // 깜빡이면 세로로 납작해지고 살짝 옆으로 벌어진다.
+        // 감은 눈(‿·⌒)에서 뜨는 중이면 선처럼 납작한 데서 커지면서 나타난다.
+        const bl = Math.max(blink, mix.calm + mix.happy > 0.01 ? 1 - mix.open : 0);
+        draw(eo, { tf: [eo.fx, eo.fy, 1 + 0.1 * bl, 1 - 0.92 * bl], tr: [lx, ly], alpha: mix.open });
+      }
+      const ec = sprites[calm];
+      // 감은 눈끼리 바뀔 때(⌒ ↔ ‿)는 사라지는 쪽이 납작해지고 나타나는 쪽이 자라나서 겹쳐 보이지 않는다
+      if (ec && mix.calm > 0.01) draw(ec, { tf: [ec.fx, ec.fy, 1, 0.3 + 0.7 * clamp01(mix.calm)], alpha: mix.calm });
+      const eh = sprites[happy];
+      if (eh && mix.happy > 0.01) draw(eh, { tf: [eh.fx, eh.fy, 1, 0.3 + 0.7 * clamp01(mix.happy)], alpha: mix.happy });
+    }
+    for (const b of ["browL", "browR"] as const) {
+      const L = sprites[b];
+      if (L) draw(L, { tr: [lx * 0.5, f.browY] });
+    }
+    const sm = sprites.smile;
+    if (sm && f.mouthO < 0.99) {
+      // 무표정(0)은 짧은 일자 입, 1은 원본 미소, 그 위는 더 넓게
+      const wide = 0.82 + 0.18 * Math.min(1, f.smile) + 0.22 * Math.max(0, f.smile - 1);
+      draw(sm, { tf: [sm.fx, sm.fy, wide, 1], bend: 1 - f.smile, alpha: 1 - clamp01(f.mouthO) });
+    }
+    const mo = sprites.mouthO;
+    if (mo && f.mouthO > 0.01) {
+      const k = 0.8 + 0.2 * clamp01(f.mouthO);
+      draw(mo, { tf: [mo.fx, mo.fy, k, k], alpha: clamp01(f.mouthO) });
+    }
+    drawUmbrella(umbFront);
+    const gs = sprites.glasses;
+    if (gs) {
+      g.uniform1f(U.u_glint, P.glint ?? -10);
+      // 이마 위로 올리면 살짝 기울어진다
+      draw(gs, { tr: [0, -64 * f.glasses], rot: -0.14 * f.glasses });
     }
   }
 
@@ -338,13 +556,12 @@ export async function createEngine(
   }
 
   function dispose() {
-    const g = gl;
-    for (const t of textures) g.deleteTexture(t);
-    for (const b of buffers) g.deleteBuffer(b);
-    g.deleteProgram(prog);
-    g.deleteShader(vs);
-    g.deleteShader(fs);
-    g.getExtension("WEBGL_lose_context")?.loseContext();
+    for (const t of textures) gl.deleteTexture(t);
+    for (const b of buffers) gl.deleteBuffer(b);
+    gl.deleteProgram(prog);
+    gl.deleteShader(vs);
+    gl.deleteShader(fs);
+    gl.getExtension("WEBGL_lose_context")?.loseContext();
   }
 
   return { render, resize, dispose };

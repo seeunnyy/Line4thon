@@ -18,6 +18,8 @@ const GROUPS: { title: string; links: { href: string; label: string }[] }[] = [
       { href: "/app", label: "기본(맑음)" },
       { href: "/app?weather=cloudy", label: "흐림" },
       { href: "/app?weather=rain", label: "소나기" },
+      { href: "/app?motion=calm", label: "몽실이 움직임: 차분(작게·원본 표정)" },
+      { href: "/app?weather=rain&motion=calm", label: "소나기 · 차분" },
       { href: "/app?state=ended", label: "이벤트 종료(체크인 유도)" },
       { href: "/app?state=empty", label: "이벤트 없음" },
     ],

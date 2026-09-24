@@ -20,15 +20,16 @@ import {
 type HomeState = "default" | "ended" | "empty";
 
 // UI 시안용 미리보기 스위치(로직 구현 단계에서 지운다):
-//   ?state=default|ended|empty  ?weather=sunny|cloudy|rain
+//   ?state=default|ended|empty  ?weather=sunny|cloudy|rain  ?motion=lively|calm(몽실이 움직임 크기)
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ state?: string; weather?: string }>;
+  searchParams: Promise<{ state?: string; weather?: string; motion?: string }>;
 }) {
   const sp = await searchParams;
   const state: HomeState = (["default", "ended", "empty"] as const).find((s) => s === sp.state) ?? "default";
   const weather: Weather = (["sunny", "cloudy", "rain"] as const).find((w) => w === sp.weather) ?? "sunny";
+  const motion = sp.motion === "calm" ? "calm" : "lively";
 
   return (
     <>
@@ -42,7 +43,7 @@ export default async function HomePage({
             {HOME_BUBBLE[state][weather]}
           </SpeechBubble>
           <div className="mt-6 flex justify-center">
-            <Mongsil weather={weather} height={280} />
+            <Mongsil weather={weather} height={280} motion={motion} />
           </div>
           <div className="mt-4 flex justify-center">
             <WeatherPill weather={weather} />
