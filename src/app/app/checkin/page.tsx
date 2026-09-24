@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Header from "@/components/ui/Header";
 import CoachCard from "@/components/ui/CoachCard";
 import SectionTitle from "@/components/ui/SectionTitle";
@@ -12,23 +13,113 @@ import Button from "@/components/ui/Button";
 import TextLink from "@/components/ui/TextLink";
 import Icon from "@/components/ui/Icon";
 import type { IconName } from "@/components/ui/Icon";
+import type { Bloat, Energy } from "@/lib/model";
+import { checkinTemplate } from "@/lib/coach";
+import { todayISO } from "@/lib/dates";
+import { eventTitle, pendingCheckinEvent } from "@/lib/forecast";
+import { getStore, newId, saveCheckIn } from "@/lib/storage";
 
-const BLOAT_OPTIONS: { key: string; label: string; icon: IconName }[] = [
+const BLOAT_OPTIONS: { key: Bloat; label: string; icon: IconName }[] = [
   { key: "light", label: "가벼움", icon: "bloat-light" },
   { key: "mid", label: "약간 부음", icon: "bloat-mid" },
   { key: "heavy", label: "묵직함", icon: "bloat-heavy" },
 ];
 
-const ENERGY_OPTIONS: { key: string; label: string; icon: IconName }[] = [
+const ENERGY_OPTIONS: { key: Energy; label: string; icon: IconName }[] = [
   { key: "good", label: "개운함", icon: "energy-good" },
   { key: "low", label: "피곤함", icon: "energy-low" },
 ];
 
-// 이 화면은 (tabs) 그룹 밖이라 탭바가 없다 (DESIGN.md "하위 흐름에서는 숨김" 규칙).
-// 수치·저장·API는 없다. 칩 선택 상태만 useState로 보여준다.
+// /api/coach에 칩 선택값만 보내 코칭 문구를 받는다. 라우트가 없거나 실패하면 같은 템플릿을 여기서 쓴다.
+async function fetchCoaching(input: { bloat: Bloat; energy: Energy }): Promise<string> {
+  try {
+    const res = await fetch("/api/coach", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "checkin", ...input }),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { message?: unknown };
+      if (typeof data.message === "string") return data.message;
+    }
+  } catch {
+    // 네트워크 오류 → 템플릿
+  }
+  return checkinTemplate(input);
+}
+
+// useSearchParams는 Suspense 경계 안에서만 쓸 수 있다.
 export default function CheckinPage() {
-  const [bloat, setBloat] = useState("mid"); // 처음 선택: 약간 부음
-  const [energy, setEnergy] = useState("low"); // 처음 선택: 피곤함
+  return (
+    <Suspense>
+      <Checkin />
+    </Suspense>
+  );
+}
+
+// 이 화면은 (tabs) 그룹 밖이라 탭바가 없다 (DESIGN.md "하위 흐름에서는 숨김" 규칙).
+// 입력 화면 배치는 UI-SPEC.md 좌표 그대로 두고, "체크인 완료하기"를 누르면 저장한 뒤 코칭 메시지 화면으로 바뀐다.
+// 어느 이벤트의 체크인인지는 ?event=로 받고, 없으면 체크인 안 한 가장 최근 지난 이벤트에 붙인다.
+function Checkin() {
+  const params = useSearchParams();
+  const [bloat, setBloat] = useState<Bloat>("mid"); // 처음 선택: 약간 부음
+  const [energy, setEnergy] = useState<Energy>("low"); // 처음 선택: 피곤함
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ message: string; title: string | null } | null>(null);
+
+  const submit = async () => {
+    if (sending) return;
+    setSending(true);
+    const store = getStore();
+    const today = todayISO();
+    const event =
+      store.events.find((e) => e.id === params.get("event")) ??
+      pendingCheckinEvent(store.events, store.checkins, today);
+    const message = await fetchCoaching({ bloat, energy });
+    saveCheckIn({
+      id: newId("ci"),
+      eventId: event?.id ?? null,
+      date: today,
+      bloat,
+      energy,
+      message,
+      createdAt: new Date().toISOString(),
+    });
+    setResult({ message, title: event ? eventTitle(event) : null });
+    setSending(false);
+    window.scrollTo(0, 0);
+  };
+
+  if (result) {
+    return (
+      <>
+        <Header variant="brand" />
+        <main className="px-5 pb-[calc(24px+env(safe-area-inset-bottom))]">
+          <h1 className="mt-2 text-display font-bold">체크인을 마쳤어요</h1>
+          <p className="mt-3 text-body text-subtext">
+            {result.title ? `${result.title} 기록에 남겨 뒀어요.` : "오늘 체크인을 기록에 남겨 뒀어요."}
+          </p>
+          <CoachCard
+            captionIcon="water"
+            captionSize="body"
+            caption="체수분은 48~72시간에 걸쳐 서서히 걷혀요"
+            message={result.message}
+          />
+          <Notice>
+            Bodycast의 복귀 가이드는 일상적인 자기돌봄 및 행동 완충 가이드이며, 전문 의사나
+            영양사의 의학적 진단 및 처방을 대신하지 않습니다. 몸의 이상 징후가 있을 때는
+            전문의와 상의하세요.
+          </Notice>
+          <Button size="lg" href="/app" icon className="mt-6">
+            홈 예보로 가기
+          </Button>
+          <TextLink href="/app/log" className="mt-px">
+            기록 보기
+          </TextLink>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
@@ -123,7 +214,7 @@ export default function CheckinPage() {
           전문의와 상의하세요.
         </Notice>
 
-        <Button size="lg" href="/app" icon dataSpec="cta" className="mt-6">
+        <Button size="lg" onClick={submit} disabled={sending} icon dataSpec="cta" className="mt-6">
           체크인 완료하기
         </Button>
 
