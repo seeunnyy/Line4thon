@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import SampleTag from "@/components/ui/SampleTag";
 import { GRAPH_POINTS } from "@/mocks/sample";
 
@@ -12,7 +12,9 @@ const BASE_Y = 158; // x축(기준선)
 const FAT_Y = 150; // 실제 지방 수평선
 const CURVE = "0,30 106,81 212,133 265,150 318,150";
 const AREA = `${CURVE} 318,${FAT_Y} 0,${FAT_Y}`;
-// 탭 지점: 이벤트 직후 · 24시간 · 48시간 · 72시간
+// 탭 지점: 이벤트 직후 · 24시간 · 48시간 · 72시간(표시체중 전체 수렴 48~72시간, SIMULATION.md 2장)
+const HOURS = [0, 24, 48, 72] as const;
+const SPAN_H = 72;
 const POINTS = [
   { x: 0, y: 30 },
   { x: 106, y: 81 },
@@ -22,10 +24,23 @@ const POINTS = [
 
 const pct = (v: number, total: number) => `${(v / total) * 100}%`;
 
-export default function DualGraph() {
-  const [active, setActive] = useState(1); // 기본: 24시간(다음 날)
-  const point = POINTS[active];
-  const info = GRAPH_POINTS[active];
+// hours를 주면 스토리 모드(예보 결과의 한 주 미리 보기): 곡선이 그 시점까지만 그려지고, 점을 누르면 그 시점(시간)을 onPick으로 알린다.
+// hours가 null이면 이벤트 전이라 곡선을 그리지 않는다. hours를 안 주면 점을 눌러 설명을 보는 단독 모드다.
+export default function DualGraph({
+  hours,
+  onPick,
+}: {
+  hours?: number | null;
+  onPick?: (hours: number) => void;
+} = {}) {
+  const story = hours !== undefined;
+  const [picked, setPicked] = useState(1); // 단독 모드 기본: 24시간(다음 날)
+  const reached = (i: number) => !story || (hours !== null && HOURS[i] <= hours);
+  const active = story ? HOURS.reduce((acc, h, i) => (reached(i) ? i : acc), -1) : picked;
+  const reveal = story ? (hours === null ? 0 : Math.min(1, Math.max(0, hours / SPAN_H))) : 1;
+  const point = active >= 0 ? POINTS[active] : null;
+  const info = GRAPH_POINTS[Math.max(0, active)];
+  const clipId = `dual-graph-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
 
   return (
     <div className="p-4">
@@ -54,18 +69,33 @@ export default function DualGraph() {
           aria-label="표시체중과 실제 지방의 변화를 보여주는 예시 그래프예요. 표시체중은 이벤트 직후 가장 높고, 48~72시간에 걸쳐 실제 지방 선에 가까워져요."
           className="block h-auto w-full"
         >
+          <defs>
+            <clipPath id={clipId}>
+              {/* 재생 위치까지만 보이게 가로로 늘어나는 창. 움직임 줄이기에서는 바로 그 위치로 간다. */}
+              <rect
+                x="0"
+                y="0"
+                width={W}
+                height={H}
+                style={{ transform: `scaleX(${reveal})`, transformOrigin: "0 0" }}
+                className="motion-safe:transition-transform motion-safe:duration-700 motion-safe:ease-out"
+              />
+            </clipPath>
+          </defs>
           <line x1="0" y1={BASE_Y} x2={W} y2={BASE_Y} stroke="#E4E1EC" strokeWidth="1" />
-          <polygon points={AREA} fill="#225FA5" fillOpacity="0.08" />
-          <line
-            x1={point.x}
-            y1={point.y}
-            x2={point.x}
-            y2={BASE_Y}
-            stroke="#225FA5"
-            strokeOpacity="0.35"
-            strokeWidth="1"
-            strokeDasharray="3 3"
-          />
+          <polygon points={AREA} fill="#225FA5" fillOpacity="0.08" clipPath={`url(#${clipId})`} />
+          {point && (
+            <line
+              x1={point.x}
+              y1={point.y}
+              x2={point.x}
+              y2={BASE_Y}
+              stroke="#225FA5"
+              strokeOpacity="0.35"
+              strokeWidth="1"
+              strokeDasharray="3 3"
+            />
+          )}
           <line
             x1="0"
             y1={FAT_Y}
@@ -76,6 +106,7 @@ export default function DualGraph() {
             strokeDasharray="5 4"
           />
           <polyline
+            clipPath={`url(#${clipId})`}
             points={CURVE}
             fill="none"
             stroke="#225FA5"
@@ -84,6 +115,12 @@ export default function DualGraph() {
             strokeLinecap="round"
           />
         </svg>
+
+        {story && hours === null && (
+          <p className="absolute inset-x-0 top-[22%] text-center text-body text-subtext">
+            이벤트가 끝나면 곡선이 그려져요
+          </p>
+        )}
 
         {/* 44×44 탭 영역. SVG 위에 겹친 HTML 버튼이라 키보드로도 고를 수 있다. */}
         {POINTS.map((p, i) => {
@@ -94,16 +131,18 @@ export default function DualGraph() {
               type="button"
               aria-label={`${GRAPH_POINTS[i].axis} 시점 보기`}
               aria-pressed={selected}
-              onClick={() => setActive(i)}
+              onClick={() => (story ? onPick?.(HOURS[i]) : setPicked(i))}
               style={{ left: pct(p.x, W), top: pct(p.y, H) }}
               className="absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-cobalt"
             >
               <span
                 aria-hidden="true"
-                className={`rounded-full border-2 border-cobalt ${
+                className={`rounded-full border-2 ${
                   selected
-                    ? "h-4 w-4 bg-cobalt ring-2 ring-white"
-                    : "h-3 w-3 bg-white"
+                    ? "h-4 w-4 border-cobalt bg-cobalt ring-2 ring-white"
+                    : reached(i)
+                      ? "h-3 w-3 border-cobalt bg-white"
+                      : "h-3 w-3 border-line bg-white"
                 }`}
               />
             </button>
@@ -128,9 +167,11 @@ export default function DualGraph() {
         })}
       </div>
 
-      <p aria-live="polite" className="mt-3 bg-surface-low px-3 py-3 text-body">
-        <span className="font-bold">{info.label}</span> · {info.text}
-      </p>
+      {!story && (
+        <p aria-live="polite" className="mt-3 bg-surface-low px-3 py-3 text-body">
+          <span className="font-bold">{info.label}</span> · {info.text}
+        </p>
+      )}
     </div>
   );
 }

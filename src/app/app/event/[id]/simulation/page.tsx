@@ -1,50 +1,33 @@
 import Header from "@/components/ui/Header";
-import Card from "@/components/ui/Card";
-import CoachCard from "@/components/ui/CoachCard";
 import SectionTitle from "@/components/ui/SectionTitle";
-import SampleTag from "@/components/ui/SampleTag";
 import Notice from "@/components/ui/Notice";
 import StickyBottom from "@/components/ui/StickyBottom";
 import Button from "@/components/ui/Button";
-import DualGraph from "@/components/simulation/DualGraph";
 import GuideTabs from "@/components/simulation/GuideTabs";
-import { SIM_SAMPLE } from "@/mocks/sample";
+import WeekPlayer from "@/components/simulation/WeekPlayer";
+import { STORY_SAMPLE, STORY_TRIP_SAMPLE } from "@/mocks/sample";
 
-// 예보 결과. 지금은 어떤 id로 열어도 같은 샘플을 보여준다(저장·계산 없음).
+// 예보 결과: 몽실이와 내 한 주를 미리 지나가 보는 화면. 지금은 어떤 id로 열어도 같은 샘플을 보여준다(저장·계산 없음).
+// UI 시안용 미리보기 스위치(로직 구현 단계에서 지운다):
+//   ?event=trip(여러 날 이벤트 블록)  ?scene=0~4(처음 보여줄 장면)
 export default async function SimulationResultPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ event?: string; scene?: string }>;
 }) {
   await params;
+  const sp = await searchParams;
+  const story = sp.event === "trip" ? STORY_TRIP_SAMPLE : STORY_SAMPLE;
+  const scene = Number.parseInt(sp.scene ?? "0", 10) || 0;
 
   return (
     <div className="flex min-h-dvh flex-col">
       <Header variant="back" backHref="/app/forecast" title="예보 결과" />
 
       <main className="flex-1 px-5 pb-6">
-        <Card variant="round" className="mt-4">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-body text-subtext">
-              {SIM_SAMPLE.title} · {SIM_SAMPLE.amount}
-            </p>
-            <SampleTag>직접 입력 샘플</SampleTag>
-          </div>
-          <p className="mt-3 text-body text-subtext">체중계에 보일 수 있는 숫자</p>
-          <p className="text-hero-num font-bold">{SIM_SAMPLE.displayed}</p>
-          <p className="mt-2 text-body">{SIM_SAMPLE.displayedNote}</p>
-          <div className="mt-4 border-t border-line pt-4">
-            <p className="text-lead font-bold text-positive">실제 지방은 {SIM_SAMPLE.fat}</p>
-            <p className="mt-1 text-body text-subtext">{SIM_SAMPLE.fatNote}</p>
-          </div>
-        </Card>
-
-        <CoachCard message={SIM_SAMPLE.coach} caption={SIM_SAMPLE.coachCaption} captionSize="body" />
-
-        <SectionTitle icon="info">표시체중 vs 실제 지방</SectionTitle>
-        <Card variant="panel" className="mt-2">
-          <DualGraph />
-        </Card>
+        <WeekPlayer story={story} initialScene={scene} />
 
         <SectionTitle icon="heart">이벤트 대응 가이드</SectionTitle>
         <GuideTabs />
