@@ -26,12 +26,15 @@ const pct = (v: number, total: number) => `${(v / total) * 100}%`;
 
 // hours를 주면 스토리 모드(예보 결과의 한 주 미리 보기): 곡선이 그 시점까지만 그려지고, 점을 누르면 그 시점(시간)을 onPick으로 알린다.
 // hours가 null이면 이벤트 전이라 곡선을 그리지 않는다. hours를 안 주면 점을 눌러 설명을 보는 단독 모드다.
+// compact는 무대 아래에 붙이는 낮은 판: 그림 높이만 줄이고(가로는 그대로) 선 굵기는 유지한다.
 export default function DualGraph({
   hours,
   onPick,
+  compact = false,
 }: {
   hours?: number | null;
   onPick?: (hours: number) => void;
+  compact?: boolean;
 } = {}) {
   const story = hours !== undefined;
   const [picked, setPicked] = useState(1); // 단독 모드 기본: 24시간(다음 날)
@@ -41,9 +44,11 @@ export default function DualGraph({
   const point = active >= 0 ? POINTS[active] : null;
   const info = GRAPH_POINTS[Math.max(0, active)];
   const clipId = `dual-graph-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  // compact에서 세로로 눌러도 선 굵기·점선 간격이 변하지 않게 한다.
+  const stroke = compact ? ({ vectorEffect: "non-scaling-stroke" } as const) : {};
 
   return (
-    <div className="p-4">
+    <div className={compact ? "px-3 py-3" : "p-4"}>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <ul className="flex items-center gap-4 text-body">
           <li className="flex items-center gap-2">
@@ -62,12 +67,13 @@ export default function DualGraph({
         <SampleTag>예시 곡선 · 샘플</SampleTag>
       </div>
 
-      <div className="relative mt-4">
+      <div className={`relative ${compact ? "mt-2" : "mt-4"}`}>
         <svg
           viewBox={`0 0 ${W} ${H}`}
           role="img"
           aria-label="표시체중과 실제 지방의 변화를 보여주는 예시 그래프예요. 표시체중은 이벤트 직후 가장 높고, 48~72시간에 걸쳐 실제 지방 선에 가까워져요."
-          className="block h-auto w-full"
+          preserveAspectRatio={compact ? "none" : undefined}
+          className={`block w-full ${compact ? "h-[96px]" : "h-auto"}`}
         >
           <defs>
             <clipPath id={clipId}>
@@ -82,7 +88,7 @@ export default function DualGraph({
               />
             </clipPath>
           </defs>
-          <line x1="0" y1={BASE_Y} x2={W} y2={BASE_Y} stroke="#E4E1EC" strokeWidth="1" />
+          <line x1="0" y1={BASE_Y} x2={W} y2={BASE_Y} stroke="#E4E1EC" strokeWidth="1" {...stroke} />
           <polygon points={AREA} fill="#225FA5" fillOpacity="0.08" clipPath={`url(#${clipId})`} />
           {point && (
             <line
@@ -94,6 +100,7 @@ export default function DualGraph({
               strokeOpacity="0.35"
               strokeWidth="1"
               strokeDasharray="3 3"
+              {...stroke}
             />
           )}
           <line
@@ -104,6 +111,7 @@ export default function DualGraph({
             stroke="#006B56"
             strokeWidth="2"
             strokeDasharray="5 4"
+            {...stroke}
           />
           <polyline
             clipPath={`url(#${clipId})`}
@@ -113,6 +121,7 @@ export default function DualGraph({
             strokeWidth="3"
             strokeLinejoin="round"
             strokeLinecap="round"
+            {...stroke}
           />
         </svg>
 

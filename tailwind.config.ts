@@ -59,6 +59,8 @@ const config: Config = {
       keyframes: {
         "sheet-up": { from: { transform: "translateY(100%)" }, to: { transform: "translateY(0)" } },
         "fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },
+        // 예보 결과 재생 진행 막대: 한 장면 동안 왼쪽부터 차오른다(길이는 WeekPlayer가 SCENE_MS로 animationDuration을 덮어쓴다).
+        "scene-progress": { from: { transform: "scaleX(0)" }, to: { transform: "scaleX(1)" } },
         // 몽실이: 몸은 숨 쉬듯 살짝, 해는 둥실, 구름은 좌우로 천천히, 빗방울은 떨어지며 사라진다.
         "mongsil-breathe": { "0%, 100%": { transform: "scaleY(1)" }, "50%": { transform: "scaleY(1.012)" } },
         "mongsil-bob": {
@@ -76,6 +78,7 @@ const config: Config = {
       animation: {
         "sheet-up": "sheet-up 240ms ease-out",
         "fade-in": "fade-in 200ms ease-out",
+        "scene-progress": "scene-progress 1s linear forwards",
         "mongsil-breathe": "mongsil-breathe 3.6s ease-in-out infinite",
         "mongsil-bob": "mongsil-bob 4.2s ease-in-out infinite",
         "mongsil-drift": "mongsil-drift 5.5s ease-in-out infinite",
