@@ -1,3 +1,5 @@
+"use client";
+
 import Header from "@/components/ui/Header";
 import HeroBackdrop from "@/components/ui/HeroBackdrop";
 import SpeechBubble from "@/components/ui/SpeechBubble";
@@ -12,28 +14,33 @@ import SampleTag from "@/components/ui/SampleTag";
 import Button from "@/components/ui/Button";
 import StatusStatCard from "@/components/ui/StatusStatCard";
 import Link from "next/link";
+import { HOME_STATUS } from "@/mocks/sample";
+import { homeBubble, type HomeState } from "@/lib/coach";
+import { todayISO } from "@/lib/dates";
 import {
-  HOME_BUBBLE,
-  HOME_STATUS,
-  WEEK_SAMPLE,
-  WEEK_SAMPLE_EMPTY,
-  type Weather,
-} from "@/mocks/sample";
+  buildWeek,
+  pendingCheckinEvent,
+  upcomingEvents,
+  weatherOn,
+  whenLabel,
+} from "@/lib/forecast";
+import { useStore } from "@/lib/storage";
 
-type HomeState = "default" | "ended" | "empty";
+// 홈. 저장된 이벤트·체크인으로 오늘의 날씨·말풍선·주간 스트립·카드를 정한다.
+// 우선순위: 체크인할 지난 이벤트(ended) → 다가오는 이벤트(default) → 없음(empty).
+export default function HomePage() {
+  const store = useStore();
+  if (!store) return null;
 
-// UI 시안용 미리보기 스위치(로직 구현 단계에서 지운다):
-//   ?state=default|ended|empty  ?weather=sunny|cloudy|rain  ?motion=calm|lively(몽실이 움직임 크기, 기본 calm)
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ state?: string; weather?: string; motion?: string }>;
-}) {
-  const sp = await searchParams;
-  const state: HomeState = (["default", "ended", "empty"] as const).find((s) => s === sp.state) ?? "default";
-  const weather: Weather = (["sunny", "cloudy", "rain"] as const).find((w) => w === sp.weather) ?? "sunny";
-  // 오늘의 상태 카드와 함께 두는 히어로라 기본은 calm(작게). ?motion=lively로 크게 볼 수 있다.
-  const motion = sp.motion === "lively" ? "lively" : "calm";
+  const today = todayISO();
+  const upcoming = upcomingEvents(store.events, today)[0] ?? null;
+  const upcomingSim = upcoming ? store.simulations[upcoming.id] : undefined;
+  const pending = pendingCheckinEvent(store.events, store.checkins, today);
+  const state: HomeState = pending ? "ended" : upcoming ? "default" : "empty";
+  const weather = weatherOn(today, store.events);
+  // 오늘의 상태 카드와 함께 두는 히어로라 몽실이는 calm(작게)으로 둔다.
+  const motion = "calm";
+  // 오늘의 상태 카드는 이 앱이 아직 모으지 않는 값이라(저장 대상 8종 밖) 샘플로 남겨 둔다.
   const s = HOME_STATUS;
 
   return (
@@ -45,7 +52,7 @@ export default async function HomePage({
         {/* 히어로: 날씨에 따라 배경·pill 문구가 바뀐다 */}
         <HeroBackdrop weather={weather} className="px-5 pb-6 pt-5 text-center">
           <SpeechBubble icon="sun" label="오늘의 예보">
-            {HOME_BUBBLE[state][weather]}
+            {homeBubble(state, weather, upcoming ? { event: upcoming, when: whenLabel(upcoming, today) } : null)}
           </SpeechBubble>
           {/* 오늘의 상태: 왼쪽 3 | 몽실이 | 오른쪽 3. 폭 확보를 위해 몽실이는 calm + 190px */}
           <div className="mt-4 flex justify-end">
@@ -106,34 +113,31 @@ export default async function HomePage({
 
         <div className="px-5 pb-6">
           <SectionTitle icon="calendar">이번 주 예보</SectionTitle>
-          <WeekStrip days={state === "empty" ? WEEK_SAMPLE_EMPTY : WEEK_SAMPLE} className="mt-2" />
+          <WeekStrip days={buildWeek(today, store.events)} className="mt-2" />
 
-          {state === "default" && (
-            <>
-              <SectionTitle icon="calendar">다가오는 이벤트</SectionTitle>
-              <EventSummaryCard className="mt-2" />
-            </>
-          )}
-
-          {state === "ended" && (
+          {pending && (
             <>
               <SectionTitle icon="heart">이벤트 체크인</SectionTitle>
               <Card variant="round" className="mt-2">
-                <div className="flex justify-end">
-                  <SampleTag />
-                </div>
-                <p className="mt-1 text-lead font-bold">지난 이벤트, 어땠나요?</p>
+                <p className="text-lead font-bold">지난 이벤트, 어땠나요?</p>
                 <p className="mt-2 text-body">
                   다시 시작해도 이전의 기록은 남아요. 지금 상태를 가볍게 체크해 봐요.
                 </p>
-                <Button size="md" href="/app/checkin" className="mt-4">
+                <Button size="md" href={`/app/checkin?event=${pending.id}`} className="mt-4">
                   복귀 체크인 하기
                 </Button>
               </Card>
             </>
           )}
 
-          {state === "empty" && (
+          {upcoming && upcomingSim && (
+            <>
+              <SectionTitle icon="calendar">다가오는 이벤트</SectionTitle>
+              <EventSummaryCard event={upcoming} sim={upcomingSim} today={today} className="mt-2" />
+            </>
+          )}
+
+          {!upcoming && (
             <>
               <SectionTitle icon="calendar">다가오는 이벤트</SectionTitle>
               <Card variant="round" className="mt-2">
