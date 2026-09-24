@@ -12,19 +12,18 @@ import Button from "@/components/ui/Button";
 
 const TRIES = ["1차", "2차", "3차", "4차", "5차 이상"] as const;
 
-// 정보 입력(온보딩 1/2). 저장은 없다 — 입력·선택 상태만 화면에 보여주고, 다음 화면으로 이동한다.
+// 정보 입력(온보딩 1/3). 저장은 없다 — 입력·선택 상태만 화면에 보여주고, 다음 화면으로 이동한다.
+// 키·체중은 몸 정보 화면(/onboarding/body)으로 옮겼다.
 export default function ProfilePage() {
   const router = useRouter();
   const [nickname, setNickname] = useState("");
   const [tries, setTries] = useState<string | null>(null);
-  const [height, setHeight] = useState("");
-  const [weight, setWeight] = useState("");
 
   const ready = nickname.trim().length > 0 && tries !== null;
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <Header variant="back" backHref="/" center={<ProgressDots total={2} current={1} />} />
+      <Header variant="back" backHref="/" center={<ProgressDots total={3} current={1} />} />
 
       <main className="flex-1 px-5 pb-6">
         <h1 className="mt-2 text-display font-bold">나를 소개해 주세요</h1>
@@ -61,28 +60,6 @@ export default function ProfilePage() {
             지금이 몇 번째 도전인지 골라 주세요. 정답은 없어요.
           </p>
         </div>
-
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <Field
-            label="키"
-            optional
-            unit="cm"
-            inputMode="numeric"
-            value={height}
-            onChange={(e) => setHeight(e.target.value.replace(/[^0-9]/g, ""))}
-            maxLength={3}
-          />
-          <Field
-            label="현재 체중"
-            optional
-            unit="kg"
-            inputMode="decimal"
-            value={weight}
-            onChange={(e) => setWeight(e.target.value.replace(/[^0-9.]/g, ""))}
-            maxLength={5}
-          />
-        </div>
-        <p className="mt-2 text-body text-subtext">나중에 마이페이지에서 입력해도 돼요.</p>
       </main>
 
       <StickyBottom>
@@ -90,7 +67,7 @@ export default function ProfilePage() {
           size="lg"
           icon
           disabled={!ready}
-          onClick={() => router.push("/onboarding/avatar")}
+          onClick={() => router.push("/onboarding/body")}
         >
           다음
         </Button>

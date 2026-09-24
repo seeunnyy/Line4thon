@@ -19,7 +19,7 @@ const LOOKS: { weather: Weather; bg: string }[] = [
   { weather: "rain", bg: "linear-gradient(160deg, #C9D7F0, #EEF1FA)" },
 ];
 
-// 아바타 설정(온보딩 2/2). 몽실이가 날씨에 따라 표정·소품이 달라진다는 것을 보여주는 3장 스와이프 + 점 표시.
+// 아바타 설정(온보딩 3/3). 몽실이가 날씨에 따라 표정·소품이 달라진다는 것을 보여주는 3장 스와이프 + 점 표시.
 // 고르는 화면이 아니라 소개 화면이다(캐릭터는 하나, 몸은 고정). 꾸미기는 "꾸며서 시작할래요"로 이어진다.
 export default function AvatarSelectPage() {
   const scroller = useRef<HTMLDivElement>(null);
@@ -41,8 +41,8 @@ export default function AvatarSelectPage() {
     <div className="flex min-h-dvh flex-col">
       <Header
         variant="back"
-        backHref="/onboarding/profile"
-        center={<ProgressDots total={2} current={2} />}
+        backHref="/onboarding/body"
+        center={<ProgressDots total={3} current={3} />}
       />
 
       <main className="flex-1 pb-4">
