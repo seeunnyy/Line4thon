@@ -1,3 +1,5 @@
+import type { ActivityLevel, Sex } from "./tdee";
+
 // 앱 전체가 함께 쓰는 도메인 타입·라벨. 저장 모듈(storage.ts)·계산(simulation.ts)·화면이 모두 이 모양을 쓴다.
 
 export type Weather = "sunny" | "cloudy" | "rain";
@@ -30,11 +32,15 @@ export type Tries = (typeof TRIES)[number];
 
 // ── 저장 대상(ARCHITECTURE.md "Data Storage", P0 5종) ─────────────
 
+// 몸 정보(성별·나이·키·체중·활동량)는 모두 선택 입력이다. 5개가 다 있어야 TDEE를 계산한다(SIMULATION.md 3-0).
 export interface Profile {
   nickname: string;
   tries: Tries;
+  sex: Sex | null;
+  age: number | null;
   heightCm: number | null;
   weightKg: number | null;
+  activity: ActivityLevel | null;
 }
 
 // 몽실이는 하나(몸 고정)라 지금은 "온보딩에서 확인했다"는 표시만 둔다. 꾸미기 에셋이 생기면 여기에 붙인다.

@@ -12,18 +12,12 @@ import Button from "@/components/ui/Button";
 import { TRIES, type Tries } from "@/lib/model";
 import { getStore, saveProfile } from "@/lib/storage";
 
-const toNumber = (v: string) => {
-  const n = Number.parseFloat(v);
-  return Number.isFinite(n) && n > 0 ? n : null;
-};
-
-// 정보 입력(온보딩 1/2). 마이페이지 "내 정보 수정하기"로 다시 열면 저장된 값을 채워 두고, 저장 후 마이페이지로 돌아간다.
+// 정보 입력(온보딩 1/3). 키·체중 등 몸 정보는 다음 화면(/onboarding/body)에서 받는다.
+// 마이페이지 "내 정보 수정하기"로 다시 열면 저장된 값을 채워 두고, 몸 정보 화면을 거쳐 마이페이지로 돌아간다.
 export default function ProfilePage() {
   const router = useRouter();
   const [nickname, setNickname] = useState("");
   const [tries, setTries] = useState<Tries | null>(null);
-  const [height, setHeight] = useState("");
-  const [weight, setWeight] = useState("");
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
@@ -32,21 +26,24 @@ export default function ProfilePage() {
     if (!profile) return;
     setNickname(profile.nickname);
     setTries(profile.tries);
-    setHeight(profile.heightCm ? String(profile.heightCm) : "");
-    setWeight(profile.weightKg ? String(profile.weightKg) : "");
   }, []);
 
   const ready = nickname.trim().length > 0 && tries !== null;
 
   const submit = () => {
     if (!ready || tries === null) return;
+    const prev = getStore().profile;
     saveProfile({
+      sex: null,
+      age: null,
+      heightCm: null,
+      weightKg: null,
+      activity: null,
+      ...prev,
       nickname: nickname.trim(),
       tries,
-      heightCm: toNumber(height),
-      weightKg: toNumber(weight),
     });
-    router.push(editing ? "/app/me" : "/onboarding/avatar");
+    router.push("/onboarding/body");
   };
 
   return (
@@ -54,7 +51,7 @@ export default function ProfilePage() {
       <Header
         variant="back"
         backHref={editing ? "/app/me" : "/"}
-        center={editing ? undefined : <ProgressDots total={2} current={1} />}
+        center={editing ? undefined : <ProgressDots total={3} current={1} />}
       />
 
       <main className="flex-1 px-5 pb-6">
@@ -92,28 +89,6 @@ export default function ProfilePage() {
             지금이 몇 번째 도전인지 골라 주세요. 정답은 없어요.
           </p>
         </div>
-
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <Field
-            label="키"
-            optional
-            unit="cm"
-            inputMode="numeric"
-            value={height}
-            onChange={(e) => setHeight(e.target.value.replace(/[^0-9]/g, ""))}
-            maxLength={3}
-          />
-          <Field
-            label="현재 체중"
-            optional
-            unit="kg"
-            inputMode="decimal"
-            value={weight}
-            onChange={(e) => setWeight(e.target.value.replace(/[^0-9.]/g, ""))}
-            maxLength={5}
-          />
-        </div>
-        <p className="mt-2 text-body text-subtext">나중에 마이페이지에서 입력해도 돼요.</p>
       </main>
 
       <StickyBottom>
@@ -123,7 +98,7 @@ export default function ProfilePage() {
           disabled={!ready}
           onClick={submit}
         >
-          {editing ? "저장하기" : "다음"}
+          다음
         </Button>
       </StickyBottom>
     </div>

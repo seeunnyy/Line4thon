@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { calcTdee } from "./tdee";
 import type { AvatarSettings, BodyEvent, CheckIn, Profile, SimulationResult } from "./model";
 
 // 저장 모듈. localStorage 접근은 이 파일에만 둔다(ARCHITECTURE.md) — 나중에 서버 저장으로 바꿀 때 여기만 고친다.
@@ -119,6 +120,12 @@ export function saveEvent(event: BodyEvent, simulation: SimulationResult) {
 
 export function saveCheckIn(checkin: CheckIn) {
   updateStore((s) => ({ ...s, checkins: [...s.checkins, checkin] }));
+}
+
+// 저장된 몸 정보로 계산한 하루 권장 섭취 칼로리. 하나라도 비었으면 null(미계산)
+export function profileTdee(p: Profile | null): number | null {
+  if (!p) return null;
+  return calcTdee({ sex: p.sex, age: p.age, heightCm: p.heightCm, weightKg: p.weightKg, activity: p.activity });
 }
 
 export function isOnboarded(s: StoreData): boolean {

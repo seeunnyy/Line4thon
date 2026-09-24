@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/ui/Header";
 import SectionTitle from "@/components/ui/SectionTitle";
@@ -21,7 +21,8 @@ import {
 } from "@/lib/model";
 import { PRESET_KCAL, kcalLabel } from "@/lib/simulation";
 import { makeSimulationResult } from "@/lib/forecast";
-import { newId, saveEvent } from "@/lib/storage";
+import { excessPercent } from "@/lib/tdee";
+import { getStore, newId, profileTdee, saveEvent } from "@/lib/storage";
 
 type AmountMode = "preset" | "direct";
 
@@ -46,6 +47,10 @@ export default function NewEventPage() {
   const [mode, setMode] = useState<AmountMode>("preset");
   const [preset, setPreset] = useState<AmountPresetId | null>(null);
   const [kcal, setKcal] = useState("");
+  // 프리셋 비교 문구용 TDEE(SIMULATION.md 6장). 몸 정보가 다 없으면 null이라 문구를 숨긴다.
+  const [tdee, setTdee] = useState<number | null>(null);
+  useEffect(() => setTdee(profileTdee(getStore().profile)), []);
+  const selectedPreset = AMOUNT_PRESETS.find((p) => p.id === preset);
 
   const multiDay = kind === "여행" || kind === "명절";
   const amountReady = mode === "preset" ? preset !== null : Number(kcal) > 0;
@@ -135,6 +140,11 @@ export default function NewEventPage() {
                   />
                 ))}
               </ChipGroup>
+              {selectedPreset && tdee !== null && tdee > 0 && (
+                <p className="mt-2 text-body text-subtext">
+                  하루 권장량보다 약 {excessPercent(selectedPreset.kcal, tdee)}% 더 먹는 양이에요.
+                </p>
+              )}
               {kind === "명절" && preset === "many" && (
                 <p className="mt-2 text-body text-subtext">
                   명절은 상차림이 푸짐한 편이라 &lsquo;많이&rsquo;로 골라 뒀어요. 바꿔도 돼요.
@@ -143,13 +153,13 @@ export default function NewEventPage() {
             </>
           ) : (
             <Field
-              label="섭취 예상 칼로리"
+              label="평소보다 더 먹을 칼로리"
               unit="kcal"
               inputMode="numeric"
               maxLength={5}
               value={kcal}
               onChange={(e) => setKcal(e.target.value.replace(/[^0-9]/g, ""))}
-              helper="정확하지 않아도 괜찮아요. 대략 어림해서 입력해요."
+              helper="평소 식사는 빼고 더 먹는 만큼만 적어요. 대략 어림해도 괜찮아요."
             />
           )}
         </div>

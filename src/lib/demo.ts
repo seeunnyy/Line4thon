@@ -37,7 +37,15 @@ export function loadDemoData() {
 
   const prev = getStore();
   replaceStore({
-    profile: prev.profile ?? { nickname: "지은", tries: "3차", heightCm: 165, weightKg: null },
+    profile: prev.profile ?? {
+      nickname: "지은",
+      tries: "3차",
+      sex: null,
+      age: null,
+      heightCm: 165,
+      weightKg: null,
+      activity: null,
+    },
     avatar: { character: "mongsil" },
     events,
     simulations: Object.fromEntries(events.map((e) => [e.id, makeSimulationResult(e)])),
