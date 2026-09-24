@@ -1,19 +1,40 @@
+"use client";
+
 import Header from "@/components/ui/Header";
 import Card from "@/components/ui/Card";
 import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
-import Timeline from "@/components/ui/Timeline";
-import { LOG_SAMPLE } from "@/mocks/sample";
+import Timeline, { type TimelineGroup } from "@/components/ui/Timeline";
+import { monthLabel, todayISO } from "@/lib/dates";
+import { eventListItem } from "@/lib/forecast";
+import { useStore } from "@/lib/storage";
 
-// UI 시안용 미리보기 스위치(로직 구현 단계에서 지운다): ?state=default|empty
-export default async function LogPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ state?: string }>;
-}) {
-  const sp = await searchParams;
-  const empty = sp.state === "empty";
+// 기록 탭(P1): 저장된 이벤트를 최근 것부터 달별로 묶는다. 예정은 "예보 확인", 끝난 것은 체크인 여부로 배지를 단다.
+export default function LogPage() {
+  const store = useStore();
+  if (!store) return null;
+  const today = todayISO();
+  const empty = store.events.length === 0;
+
+  const groups: TimelineGroup[] = [];
+  for (const e of [...store.events].sort((a, b) => b.date.localeCompare(a.date))) {
+    const it = eventListItem(e, store.simulations[e.id], today, store.checkins);
+    const label = monthLabel(e.date);
+    let group = groups.find((g) => g.label === label);
+    if (!group) {
+      group = { label, items: [] };
+      groups.push(group);
+    }
+    group.items.push({
+      id: it.id,
+      title: it.title,
+      dateLabel: it.dateLabel,
+      badge: it.tone === "dday" ? "예보 확인" : it.badge,
+      tone: it.tone === "dday" ? "upcoming" : it.tone,
+      href: it.href,
+    });
+  }
 
   return (
     <>
@@ -45,7 +66,7 @@ export default async function LogPage({
             />
           </Card>
         ) : (
-          <Timeline groups={LOG_SAMPLE} />
+          <Timeline groups={groups} />
         )}
       </main>
     </>

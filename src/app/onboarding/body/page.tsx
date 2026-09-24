@@ -19,7 +19,7 @@ import {
   type ActivityLevel,
   type Sex,
 } from "@/lib/tdee";
-import { loadDraftNickname } from "@/lib/onboardingDraft";
+import { getStore, updateStore } from "@/lib/storage";
 
 // 빈 칸·0은 입력하지 않은 것으로 본다.
 const toNumber = (v: string) => {
@@ -27,8 +27,9 @@ const toNumber = (v: string) => {
   return Number.isFinite(n) && n > 0 ? n : null;
 };
 
-// 몸 정보 입력(온보딩 2/3). 모두 선택 입력이다. 저장은 없다.
+// 몸 정보 입력(온보딩 2/3). 모두 선택 입력이고, "다음"을 누르면 채운 만큼 프로필에 저장한다.
 // 5개가 모두 채워지면 "다음"이 같은 화면의 결과 상태(하루 권장 섭취 칼로리)를 먼저 보여준다(SIMULATION.md 6장).
+// 마이페이지에서 수정하러 들어온 경우(아바타 설정이 이미 있음)에는 아바타 대신 마이페이지로 돌아간다.
 export default function BodyPage() {
   const router = useRouter();
   const [sex, setSex] = useState<Sex | null>(null);
@@ -38,8 +39,19 @@ export default function BodyPage() {
   const [activity, setActivity] = useState<ActivityLevel | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [nickname, setNickname] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
 
-  useEffect(() => setNickname(loadDraftNickname()), []);
+  useEffect(() => {
+    const { profile, avatar } = getStore();
+    setEditing(avatar !== null);
+    if (!profile) return;
+    setNickname(profile.nickname);
+    setSex(profile.sex);
+    setAge(profile.age ? String(profile.age) : "");
+    setHeight(profile.heightCm ? String(profile.heightCm) : "");
+    setWeight(profile.weightKg ? String(profile.weightKg) : "");
+    setActivity(profile.activity);
+  }, []);
 
   const tdee = calcTdee({
     sex,
@@ -50,7 +62,25 @@ export default function BodyPage() {
   });
   const hasTdee = tdee !== null && tdee > 0;
 
-  const goAvatar = () => router.push("/onboarding/avatar");
+  const next = editing ? "/app/me" : "/onboarding/avatar";
+  const goAvatar = () => router.push(next);
+
+  const save = () =>
+    updateStore((s) =>
+      s.profile
+        ? {
+            ...s,
+            profile: {
+              ...s.profile,
+              sex,
+              age: toNumber(age),
+              heightCm: toNumber(height),
+              weightKg: toNumber(weight),
+              activity,
+            },
+          }
+        : s,
+    );
 
   if (showResult && hasTdee) {
     return (
@@ -171,10 +201,18 @@ export default function BodyPage() {
       </main>
 
       <StickyBottom>
-        <Button size="lg" icon onClick={() => (hasTdee ? setShowResult(true) : goAvatar())}>
+        <Button
+          size="lg"
+          icon
+          onClick={() => {
+            save();
+            if (hasTdee) setShowResult(true);
+            else goAvatar();
+          }}
+        >
           다음
         </Button>
-        <TextLink href="/onboarding/avatar" className="mt-1">
+        <TextLink href={next} className="mt-1">
           나중에 할게요
         </TextLink>
       </StickyBottom>

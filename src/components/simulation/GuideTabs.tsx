@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import Card from "@/components/ui/Card";
-import SampleTag from "@/components/ui/SampleTag";
 import SegmentedTabs from "@/components/ui/SegmentedTabs";
-import { GUIDE_SAMPLE } from "@/mocks/sample";
+import type { SimulationResult } from "@/lib/model";
 
 type Phase = "before" | "after";
 
@@ -13,8 +12,8 @@ const OPTIONS = [
   { value: "after", label: "이벤트 후" },
 ] as const;
 
-// 이벤트 전/후 대응 가이드(샘플 문구). 실제 문구는 LLM이 계산값을 받아 만든다(docs/LLM.md).
-export default function GuideTabs() {
+// 이벤트 전/후 대응 가이드. 문구는 등록 때 저장한 시뮬레이션 결과의 가이드다(coach.ts 템플릿, docs/LLM.md 3장).
+export default function GuideTabs({ guide }: { guide: SimulationResult["guide"] }) {
   const [phase, setPhase] = useState<Phase>("before");
 
   return (
@@ -29,11 +28,8 @@ export default function GuideTabs() {
       />
       <Card variant="panel" className="mt-2 px-4 pb-2 pt-3">
         <div role="tabpanel" id="guide-panel" aria-labelledby={`guide-tab-${phase}`}>
-          <div className="flex justify-end">
-            <SampleTag />
-          </div>
           <ul>
-            {GUIDE_SAMPLE[phase].map((text) => (
+            {guide[phase].map((text) => (
               <li
                 key={text}
                 className="flex items-start gap-3 border-t border-line py-3 text-label first:border-t-0"

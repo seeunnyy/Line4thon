@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import HeroBackdrop from "@/components/ui/HeroBackdrop";
 import Mongsil from "@/components/ui/Mongsil";
 import SpeechBubble from "@/components/ui/SpeechBubble";
-import { WEATHER_LABEL, type ForecastScene, type Weather } from "@/mocks/sample";
+import { WEATHER_LABEL, type ForecastScene, type Weather } from "@/lib/model";
 
 const WEATHERS: Weather[] = ["sunny", "cloudy", "rain"];
 const FADE = "motion-safe:transition-opacity motion-safe:duration-500";

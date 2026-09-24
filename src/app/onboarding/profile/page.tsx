@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/ui/Header";
 import ProgressDots from "@/components/ui/ProgressDots";
@@ -9,22 +9,50 @@ import ChipGroup from "@/components/ui/ChipGroup";
 import Chip from "@/components/ui/Chip";
 import StickyBottom from "@/components/ui/StickyBottom";
 import Button from "@/components/ui/Button";
-import { saveDraftNickname } from "@/lib/onboardingDraft";
+import { TRIES, type Tries } from "@/lib/model";
+import { getStore, saveProfile } from "@/lib/storage";
 
-const TRIES = ["1차", "2차", "3차", "4차", "5차 이상"] as const;
-
-// 정보 입력(온보딩 1/3). 저장은 없다 — 입력·선택 상태만 화면에 보여주고, 다음 화면으로 이동한다.
-// 키·체중은 몸 정보 화면(/onboarding/body)으로 옮겼다.
+// 정보 입력(온보딩 1/3). 키·체중 등 몸 정보는 다음 화면(/onboarding/body)에서 받는다.
+// 마이페이지 "내 정보 수정하기"로 다시 열면 저장된 값을 채워 두고, 몸 정보 화면을 거쳐 마이페이지로 돌아간다.
 export default function ProfilePage() {
   const router = useRouter();
   const [nickname, setNickname] = useState("");
-  const [tries, setTries] = useState<string | null>(null);
+  const [tries, setTries] = useState<Tries | null>(null);
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    const { profile, avatar } = getStore();
+    setEditing(avatar !== null);
+    if (!profile) return;
+    setNickname(profile.nickname);
+    setTries(profile.tries);
+  }, []);
 
   const ready = nickname.trim().length > 0 && tries !== null;
 
+  const submit = () => {
+    if (!ready || tries === null) return;
+    const prev = getStore().profile;
+    saveProfile({
+      sex: null,
+      age: null,
+      heightCm: null,
+      weightKg: null,
+      activity: null,
+      ...prev,
+      nickname: nickname.trim(),
+      tries,
+    });
+    router.push("/onboarding/body");
+  };
+
   return (
     <div className="flex min-h-dvh flex-col">
-      <Header variant="back" backHref="/" center={<ProgressDots total={3} current={1} />} />
+      <Header
+        variant="back"
+        backHref={editing ? "/app/me" : "/"}
+        center={editing ? undefined : <ProgressDots total={3} current={1} />}
+      />
 
       <main className="flex-1 px-5 pb-6">
         <h1 className="mt-2 text-display font-bold">나를 소개해 주세요</h1>
@@ -68,10 +96,7 @@ export default function ProfilePage() {
           size="lg"
           icon
           disabled={!ready}
-          onClick={() => {
-            saveDraftNickname(nickname.trim());
-            router.push("/onboarding/body");
-          }}
+          onClick={submit}
         >
           다음
         </Button>

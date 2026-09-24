@@ -1,7 +1,6 @@
 import Card from "./Card";
 import Icon, { type IconName } from "./Icon";
-import SampleTag from "./SampleTag";
-import { WEATHER_LABEL, type WeekDay, type Weather } from "@/mocks/sample";
+import { WEATHER_LABEL, type WeekDay, type Weather } from "@/lib/model";
 
 const ICON: Record<Weather, IconName> = { sunny: "sun", cloudy: "cloud", rain: "rain" };
 
@@ -16,9 +15,6 @@ export default function WeekStrip({
 }) {
   return (
     <Card variant="panel" className={`relative px-2 pb-2 pt-3 ${className}`}>
-      <div className="mb-2 flex justify-end px-1">
-        <SampleTag />
-      </div>
       <ol className="grid grid-cols-7">
         {days.map((d) => (
           <li

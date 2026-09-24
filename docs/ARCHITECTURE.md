@@ -21,7 +21,6 @@ User → 스플래시/인트로 → 온보딩(정보 입력 → 몸 정보 → �
 - `/app/me`: 마이페이지 (탭)
 - `/app/me/avatar`: 아바타 꾸미기
 - `/api/coach`: LLM 호출 전용 서버 API 라우트
-- `/dev`: 화면 시안 확인용 색인 (개발 전용, production 빌드에서는 404, 배포 전에 `src/app/dev` 삭제)
 
 ### 라우팅 규칙
 - `/app/*`은 프로필·아바타가 없으면 `/onboarding/profile`로 보낸다.
@@ -50,7 +49,8 @@ User → 스플래시/인트로 → 온보딩(정보 입력 → 몸 정보 → �
 - `src/`: application source code
   - `src/app/`: 라우트 (탭 화면은 `app/app/(tabs)/`, 하위 흐름은 그 밖에 둔다)
   - `src/components/ui/`: 공통 UI 컴포넌트 (Button, Chip, Card, Header, BottomSheet 등). 아바타는 `Avatar`(원형 얼굴)와 `Mongsil`(전신 + 날씨 소품). 전신의 몸통은 클라이언트 컴포넌트 `MongsilBody`가 정지 그림 위에 2.5D WebGL 캔버스를 얹어 움직이고, 그 엔진은 `src/components/ui/mongsil/`(`layout.ts` 좌표·`motion.ts` 날씨별 안무(calm/lively)·`engine.ts` WebGL·`faceData.ts` 얼굴 부품 좌표, 외부 라이브러리 없음)에 있다. WebGL을 못 쓰면 정지 그림 + CSS 숨쉬기로 대체된다
-  - `src/mocks/sample.ts`: 화면 시안용 샘플 데이터 (기능 구현 때 저장 모듈로 교체)
+  - `src/lib/`: 로직. `storage.ts`(localStorage 유일 접근점 + `useStore` 훅), `simulation.ts`(SIMULATION.md 계산), `forecast.ts`(날씨 규칙·주간 스트립·D-day·예보 장면), `coach.ts`(안전 규칙 템플릿 문구), `tdee.ts`(하루 권장 섭취 칼로리), `model.ts`(타입), `dates.ts`, `demo.ts`(데모 데이터)
+  - `src/mocks/sample.ts`: 아직 데이터 출처가 없는 화면 값만 남은 샘플(홈 "오늘의 상태" 카드, 아바타 꾸미기 자리 표시)
 - `public/avatar/`: 몽실이 에셋(투명 PNG, 2.5D 깊이맵 PNG, 얼굴 부품 아틀라스 PNG, 소나기 우산 분리 PNG). 내용은 docs/DESIGN.md의 Character & Avatar Rules 참고
 - `docs/`: project documents
 - `tests/`: test code

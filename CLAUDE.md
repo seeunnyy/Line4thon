@@ -16,7 +16,8 @@ Bodycast — 이벤트 대응형 다이어트 재도전 코치 모바일 서비�
 - 모바일 우선 웹앱 (스마트폰 세로 화면 기준, 폭 390px)
 
 ## Current Stage
-화면 시안 완료(로직 없음). 다음: 기능 구현 P0 — 저장 모듈 → 시뮬레이션 엔진 → 체크인 로직 → LLM 라우트
+P0 기능 구현 완료(2026-09-24): 저장 모듈·시뮬레이션 엔진·온보딩/이벤트/체크인 저장·`/api/coach`(템플릿 우선)·데모 데이터/초기화. P1 기록 탭도 실데이터로 연결. 남은 것: 홈 "오늘의 상태" 카드 데이터 출처, P2(경험치·아바타 반응 배선).
+구현 순서·기능별 가능 여부 판단·무료 API 대안은 docs/IMPLEMENTATION-PLAN.md를 따른다(2026-09-24, "무료/무결제만" 제약 조건 포함 — docs/LLM.md의 공급자 확정 항목보다 이 문서가 우선한다).
 
 ## Working Rules
 - 변경 제안 전 관련 파일을 먼저 읽는다.
@@ -44,6 +45,7 @@ Do not add:
 - 푸시 알림
 
 ## References
+- Follow docs/IMPLEMENTATION-PLAN.md for the build order, feature-by-feature feasibility, and free-tier-only tech choices (supersedes docs/LLM.md's provider line where they conflict).
 - Follow docs/DESIGN.md for UI direction.
 - Follow docs/ARCHITECTURE.md for project structure.
 - Follow docs/PRD.md for product requirements.

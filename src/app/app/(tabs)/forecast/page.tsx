@@ -1,19 +1,21 @@
+"use client";
+
 import Header from "@/components/ui/Header";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import ForecastList from "@/components/ForecastList";
+import { todayISO } from "@/lib/dates";
+import { eventListItem, pastEvents, upcomingEvents } from "@/lib/forecast";
+import type { BodyEvent } from "@/lib/model";
+import { useStore } from "@/lib/storage";
 
-type ForecastState = "default" | "empty";
-
-// UI 시안용 미리보기 스위치(로직 구현 단계에서 지운다): ?state=default|empty
-export default async function ForecastPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ state?: string }>;
-}) {
-  const sp = await searchParams;
-  const state: ForecastState = sp.state === "empty" ? "empty" : "default";
+// 예보 탭: 저장된 이벤트를 다가오는/지난 이벤트로 나눠 보여준다. 이벤트가 하나도 없으면 빈 상태.
+export default function ForecastPage() {
+  const store = useStore();
+  if (!store) return null;
+  const today = todayISO();
+  const item = (e: BodyEvent) => eventListItem(e, store.simulations[e.id], today, store.checkins);
 
   return (
     <>
@@ -22,12 +24,15 @@ export default async function ForecastPage({
         <h1 className="mt-6 text-display font-bold">예보</h1>
         <p className="mt-2 text-body text-subtext">이벤트별로 몸의 흐름을 미리 살펴봐요.</p>
 
-        {state === "default" ? (
+        {store.events.length > 0 ? (
           <>
             <Button size="lg" href="/app/event/new" icon className="mt-5">
               새 이벤트 예보 만들기
             </Button>
-            <ForecastList />
+            <ForecastList
+              upcoming={upcomingEvents(store.events, today).map(item)}
+              past={pastEvents(store.events, today).map(item)}
+            />
           </>
         ) : (
           <Card variant="round" className="mt-6">

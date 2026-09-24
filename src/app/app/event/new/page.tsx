@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/ui/Header";
 import SectionTitle from "@/components/ui/SectionTitle";
@@ -11,17 +11,18 @@ import SegmentedTabs from "@/components/ui/SegmentedTabs";
 import Notice from "@/components/ui/Notice";
 import StickyBottom from "@/components/ui/StickyBottom";
 import Button from "@/components/ui/Button";
-import SampleTag from "@/components/ui/SampleTag";
 import type { IconName } from "@/components/ui/Icon";
-import { excessPercent } from "@/lib/tdee";
 import {
   AMOUNT_PRESETS,
   EVENT_KINDS,
-  SAMPLE_EVENT,
-  SAMPLE_TDEE,
   type AmountPresetId,
+  type BodyEvent,
   type EventKind,
-} from "@/mocks/sample";
+} from "@/lib/model";
+import { PRESET_KCAL, kcalLabel } from "@/lib/simulation";
+import { makeSimulationResult } from "@/lib/forecast";
+import { excessPercent } from "@/lib/tdee";
+import { getStore, newId, profileTdee, saveEvent } from "@/lib/storage";
 
 type AmountMode = "preset" | "direct";
 
@@ -37,7 +38,7 @@ const MODE_OPTIONS = [
   { value: "direct", label: "직접 입력" },
 ] as const;
 
-// 이벤트 등록. 저장은 없다 — 선택·입력 상태만 화면에 보여주고, 조건이 채워지면 결과(샘플)로 이동한다.
+// 이벤트 등록. "예보 보기"를 누르면 이벤트와 시뮬레이션 결과를 저장하고 결과 화면으로 간다.
 export default function NewEventPage() {
   const router = useRouter();
   const [kind, setKind] = useState<EventKind | null>(null);
@@ -46,11 +47,29 @@ export default function NewEventPage() {
   const [mode, setMode] = useState<AmountMode>("preset");
   const [preset, setPreset] = useState<AmountPresetId | null>(null);
   const [kcal, setKcal] = useState("");
+  // 프리셋 비교 문구용 TDEE(SIMULATION.md 6장). 몸 정보가 다 없으면 null이라 문구를 숨긴다.
+  const [tdee, setTdee] = useState<number | null>(null);
+  useEffect(() => setTdee(profileTdee(getStore().profile)), []);
   const selectedPreset = AMOUNT_PRESETS.find((p) => p.id === preset);
 
   const multiDay = kind === "여행" || kind === "명절";
   const amountReady = mode === "preset" ? preset !== null : Number(kcal) > 0;
   const ready = kind !== null && date !== "" && amountReady;
+
+  const submit = () => {
+    if (!ready || kind === null) return;
+    const event: BodyEvent = {
+      id: newId("ev"),
+      kind,
+      date,
+      endDate: multiDay && endDate >= date ? endDate : date,
+      kcal: mode === "preset" && preset ? PRESET_KCAL[preset] : Number(kcal),
+      preset: mode === "preset" ? preset : null,
+      createdAt: new Date().toISOString(),
+    };
+    saveEvent(event, makeSimulationResult(event));
+    router.push(`/app/event/${event.id}/simulation`);
+  };
 
   // 명절을 고르면 "많이"를 미리 채운다(SIMULATION.md 4장). 이미 고른 값이 있으면 그대로 둔다.
   const chooseKind = (next: EventKind) => {
@@ -115,20 +134,16 @@ export default function NewEventPage() {
                     key={p.id}
                     size="stack"
                     label={p.label}
-                    subLabel={p.kcal}
+                    subLabel={kcalLabel(p.kcal)}
                     selected={preset === p.id}
                     onClick={() => setPreset(p.id)}
                   />
                 ))}
               </ChipGroup>
-              {selectedPreset && (
-                <div className="mt-2 flex items-center justify-between gap-2">
-                  <p className="text-body text-subtext">
-                    하루 권장량보다 약 {excessPercent(selectedPreset.value, SAMPLE_TDEE)}% 더 먹는
-                    양이에요.
-                  </p>
-                  <SampleTag className="flex-none" />
-                </div>
+              {selectedPreset && tdee !== null && tdee > 0 && (
+                <p className="mt-2 text-body text-subtext">
+                  하루 권장량보다 약 {excessPercent(selectedPreset.kcal, tdee)}% 더 먹는 양이에요.
+                </p>
               )}
               {kind === "명절" && preset === "many" && (
                 <p className="mt-2 text-body text-subtext">
@@ -157,7 +172,7 @@ export default function NewEventPage() {
           size="lg"
           icon
           disabled={!ready}
-          onClick={() => router.push(`/app/event/${SAMPLE_EVENT.id}/simulation`)}
+          onClick={submit}
         >
           예보 보기
         </Button>

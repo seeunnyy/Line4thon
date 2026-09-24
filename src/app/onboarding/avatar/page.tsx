@@ -1,13 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/components/ui/Header";
 import ProgressDots from "@/components/ui/ProgressDots";
 import Mongsil from "@/components/ui/Mongsil";
 import StickyBottom from "@/components/ui/StickyBottom";
 import Button from "@/components/ui/Button";
 import TextLink from "@/components/ui/TextLink";
-import { WEATHER_MOOD_LABEL, type Weather } from "@/mocks/sample";
+import { WEATHER_MOOD_LABEL, type Weather } from "@/lib/model";
+import { getStore, saveAvatar } from "@/lib/storage";
 
 const CARD_W = 240;
 const GAP = 16;
@@ -22,8 +24,19 @@ const LOOKS: { weather: Weather; bg: string }[] = [
 // 아바타 설정(온보딩 3/3). 몽실이가 날씨에 따라 표정·소품이 달라진다는 것을 보여주는 3장 스와이프 + 점 표시.
 // 고르는 화면이 아니라 소개 화면이다(캐릭터는 하나, 몸은 고정). 꾸미기는 "꾸며서 시작할래요"로 이어진다.
 export default function AvatarSelectPage() {
+  const router = useRouter();
   const scroller = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
+
+  // 정보 입력을 건너뛰고 들어오면 정보 입력으로 돌려보낸다.
+  useEffect(() => {
+    if (!getStore().profile) router.replace("/onboarding/profile");
+  }, [router]);
+
+  const start = (href: string) => {
+    saveAvatar({ character: "mongsil" });
+    router.push(href);
+  };
 
   const goTo = (i: number) => {
     setIndex(i);
@@ -96,10 +109,10 @@ export default function AvatarSelectPage() {
       </main>
 
       <StickyBottom>
-        <Button href="/app" size="lg" icon>
+        <Button onClick={() => start("/app")} size="lg" icon>
           몽실이와 시작하기
         </Button>
-        <TextLink href="/app/me/avatar" className="mt-1">
+        <TextLink onClick={() => start("/app/me/avatar")} className="mt-1">
           꾸며서 시작할래요
         </TextLink>
       </StickyBottom>

@@ -1,6 +1,6 @@
 import Icon from "./Icon";
 import type { IconName } from "./Icon";
-import { WEATHER_MOOD_LABEL, type Weather } from "@/mocks/sample";
+import { WEATHER_MOOD_LABEL, type Weather } from "@/lib/model";
 
 const ICON: Record<Weather, IconName> = { sunny: "sun", cloudy: "cloud", rain: "rain" };
 

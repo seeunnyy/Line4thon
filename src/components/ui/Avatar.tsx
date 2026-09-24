@@ -1,4 +1,4 @@
-import type { Weather } from "@/mocks/sample";
+import type { Weather } from "@/lib/model";
 
 // 아바타 원 = 몽실이 얼굴. 원 크기와 배지 위치는 UI-SPEC.md 5장 .badge 기준(64px 아바타에서 left 47.5 / top 47 / 21x21)을
 // size 비율로 계산해 다른 크기에서도 같은 비율을 유지한다(얼굴 이미지는 원 안쪽에서만 잘려서 규격 좌표는 그대로다).
