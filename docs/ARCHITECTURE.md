@@ -5,11 +5,12 @@
 - 네이티브 앱 빌드·앱스토어 배포는 범위 밖이다. 2단계에서 웨어러블(HealthKit 등)이나 푸시 알림이 필요해지면 그때 네이티브 전환을 검토한다.
 
 ## Service Structure
-User → 스플래시/인트로 → 온보딩(정보 입력 → 아바타) → 탭 화면(홈/예보/기록/마이페이지) → 이벤트 등록 → 시뮬레이션 결과 → 재개 체크인 → State(localStorage) → Tests → Deploy
+User → 스플래시/인트로 → 온보딩(정보 입력 → 몸 정보 → 아바타) → 탭 화면(홈/예보/기록/마이페이지) → 이벤트 등록 → 시뮬레이션 결과 → 재개 체크인 → State(localStorage) → Tests → Deploy
 
 ## Planned Routes
 - `/`: 스플래시/인트로 (프로필·아바타가 이미 있으면 `/app`으로 이동)
 - `/onboarding/profile`: 내 정보 입력
+- `/onboarding/body`: 몸 정보 입력(성별·나이·키·체중·활동량, 모두 선택. 하루 권장 섭취 칼로리 계산용)
 - `/onboarding/avatar`: 아바타 설정
 - `/app`: 홈 (탭)
 - `/app/forecast`: 예보 목록 (탭)
