@@ -1,7 +1,9 @@
 // 몽실이 2.5D 엔진. 의존성 없는 직접 작성 WebGL(3D 라이브러리 아님).
 // - 렌더 한 장(mongsil-*.png)을 격자 메시로 깔고, 깊이맵(mongsil-*-depth.png)으로 볼록하게 만든 뒤
 //   요/피치/롤 회전 + 스쿼시&스트레치 + 젤리 기울기로 움직인다. 원근 없는 정사영이라 기본 자세는 원본 이미지와 똑같다.
-// - 부위별 스키닝: 고개 갸웃(머리 가중치), 팔·가방·발 들기는 가우시안 영역을 회전/이동시킨다(말랑한 인형 느낌).
+// - 부위별 스키닝: 고개 갸웃(머리), 팔·가방 회전, 발 들기. 가중치는 로드할 때 정점마다 미리 굽는다:
+//   가우시안 영역(RIG의 c, s) × 끈·가방 마스크(몸 그림 색에서 만듦) — 팔은 끈·가방 위에서 0에 가깝고 가방은 끈·가방 위에서만 움직인다.
+//   부위 가중치의 합은 1을 넘지 않는다(겹친 영역의 변위가 더해져 끈이 꺾이거나 가방이 끌려가지 않게).
 // - 소나기의 우산은 몸에서 분리된 부품 두 장(뒤 우산 = 윗면·안쪽 / 앞 막대 = 손잡이·막대)이라 몸과 따로 흔들린다.
 // - 표정: 얼굴 부품(눈 열림/감김/웃음눈, 입 굽힘·O, 눈썹, 선글라스)은 mongsil-*-parts.png 아틀라스의 별도 메시이고,
 //   부품을 지운 빈 얼굴(patch)이 원본 얼굴 위를 덮는다. 기본 표정으로 합치면 원본 렌더와 같다.
@@ -11,7 +13,7 @@ import type { Box, MongsilWeather } from "./layout";
 
 export type EyeMix = { open: number; calm: number; happy: number };
 export type Face = {
-  eyeL: EyeMix; // 눈 종류 섞임(0~1): 뜬 눈 / 감은 눈(‿) / 웃는 눈(⌒)
+  eyeL: EyeMix; // 눈 종류(0~1, 가장 큰 한 종류만 그림): 뜬 눈 / 감은 눈(‿) / 웃는 눈(⌒). 값이 작을수록 감기거나 줄어든 상태
   eyeR: EyeMix;
   blinkL: number; // 뜬 눈이 감기는 정도(0~1)
   blinkR: number;
@@ -115,12 +117,19 @@ const DEPTH_SCALE = 2; // 깊이 PNG: 밝기 = z(px) × 2, 가로세로 절반 �
 
 const VS = `
 attribute vec2 a_uv; attribute float a_z; attribute vec2 a_n; attribute float a_b;
+attribute vec4 a_w; attribute vec2 a_w2; // 미리 구운 가중치: 왼팔·오른팔·가방·왼발 / 오른발·머리 (합 ≤ 1)
 uniform vec4 u_rect; uniform vec4 u_uvr; uniform vec4 u_ltf; uniform vec3 u_ltr; uniform float u_bend;
 uniform vec2 u_size; uniform vec2 u_pivot; uniform vec2 u_canvas; uniform vec2 u_off;
 uniform vec3 u_rot; uniform vec3 u_pose;
-uniform vec4 u_head; uniform vec3 u_headA; uniform float u_skin; uniform vec3 u_umb;
-uniform vec4 u_limbA[5]; uniform vec4 u_limbB[5]; uniform vec2 u_limbC[5];
+uniform vec2 u_head; uniform vec3 u_headA; uniform float u_skin; uniform vec3 u_umb;
+uniform vec4 u_limbB[5]; uniform vec2 u_limbC[5];
 varying vec2 v_uv; varying vec2 v_luv; varying float v_shade; varying float v_shade0;
+// 부위 하나의 변위: 중심 B.xy로 B.z만큼 돌리고 C만큼 옮긴 것 × 가중치
+vec2 limb(vec2 pi, vec4 B, vec2 C, float w){
+  float c = cos(B.z), s = sin(B.z);
+  vec2 rr = pi - B.xy;
+  return w * (vec2(rr.x * c - rr.y * s, rr.x * s + rr.y * c) - rr + C);
+}
 void main(){
   vec2 pi = u_rect.xy + a_uv * u_rect.zw;
   pi.y -= u_bend * a_b;
@@ -135,18 +144,12 @@ void main(){
     float cu = cos(u_umb.z), su = sin(u_umb.z);
     d = vec2(ru.x * cu - ru.y * su, ru.x * su + ru.y * cu) - ru;
   } else {
-    float wh = 1.0 - smoothstep(u_head.z, u_head.w, pi.y);
-    vec2 rh = pi - u_head.xy;
-    float ch = cos(u_headA.x), sh = sin(u_headA.x);
-    d += wh * (vec2(rh.x * ch - rh.y * sh, rh.x * sh + rh.y * ch) - rh + u_headA.yz);
-    for (int i = 0; i < 5; i++) {
-      vec4 A = u_limbA[i]; vec4 B = u_limbB[i];
-      vec2 q = (pi - A.xy) / A.zw;
-      float w = exp(-0.5 * dot(q, q));
-      float c = cos(B.z), s = sin(B.z);
-      vec2 rr = pi - B.xy;
-      d += w * (vec2(rr.x * c - rr.y * s, rr.x * s + rr.y * c) - rr + u_limbC[i]);
-    }
+    d += limb(pi, vec4(u_head, u_headA.x, 0.0), u_headA.yz, a_w2.y);
+    d += limb(pi, u_limbB[0], u_limbC[0], a_w.x);
+    d += limb(pi, u_limbB[1], u_limbC[1], a_w.y);
+    d += limb(pi, u_limbB[2], u_limbC[2], a_w.z);
+    d += limb(pi, u_limbB[3], u_limbC[3], a_w.w);
+    d += limb(pi, u_limbB[4], u_limbC[4], a_w2.x);
   }
   pi += d;
   vec3 p = vec3(pi - u_pivot, a_z);
@@ -238,6 +241,81 @@ function sample(D: Depth, g: Float32Array, x: number, y: number): number {
   return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
 }
 
+// 끈·가방 마스크(0~1, 절반 해상도). 몸·팔은 흰색·회청색이고 끈·가방은 채도가 있으면서 어둡거나(초록·주황) 아주 어둡다.
+// 볼터치(분홍)는 채도는 있지만 밝아서 빠진다.
+type Mask = { w: number; h: number; m: Float32Array; mb: Float32Array };
+function accessoryMask(img: HTMLImageElement): Mask {
+  const W = img.naturalWidth;
+  const H = img.naturalHeight;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const x = c.getContext("2d", { willReadFrequently: true });
+  if (!x) throw new Error("no 2d context");
+  x.drawImage(img, 0, 0);
+  const d = x.getImageData(0, 0, W, H).data;
+  const w = Math.ceil(W / 2);
+  const h = Math.ceil(H / 2);
+  const m = new Float32Array(w * h);
+  for (let py = 0; py < H; py++) {
+    for (let px = 0; px < W; px++) {
+      const i = (py * W + px) * 4;
+      if (d[i + 3] < 128) continue;
+      const hi = Math.max(d[i], d[i + 1], d[i + 2]);
+      const lo = Math.min(d[i], d[i + 1], d[i + 2]);
+      if (((hi - lo) / Math.max(1, hi) > 0.18 && hi < 205) || hi < 128) m[(py >> 1) * w + (px >> 1)] = 1;
+    }
+  }
+  // 상자 흐림 두 번 → 2배(끈·가방 둘레까지 1에 가깝게)
+  const blur = (src: Float32Array, R: number) => {
+    let m2 = src;
+    for (let pass = 0; pass < 2; pass++) {
+      for (const horiz of [true, false]) {
+        const o = new Float32Array(w * h);
+        for (let j = 0; j < h; j++) {
+          for (let i = 0; i < w; i++) {
+            let s = 0;
+            let n = 0;
+            for (let k = -R; k <= R; k++) {
+              const a = horiz ? i + k : i;
+              const b = horiz ? j : j + k;
+              if (a < 0 || b < 0 || a >= w || b >= h) continue;
+              s += m2[b * w + a];
+              n++;
+            }
+            o[j * w + i] = s / n;
+          }
+        }
+        m2 = o;
+      }
+    }
+    for (let i = 0; i < m2.length; i++) m2[i] = Math.min(1, m2[i] * 2);
+    return m2;
+  };
+  // 팔은 좁게(6px) 흐린 마스크로 끈·가방에서 떼고, 가방은 넓게(16px) 흐린 마스크로 움직인다
+  // (가방은 끝이 30px 넘게 움직여서 가중치가 급하게 떨어지면 가장자리가 찢어진다).
+  return { w, h, m: blur(m, 3), mb: blur(m, 8) };
+}
+
+// 정점 가중치 [왼팔, 오른팔, 가방, 왼발, 오른발, 머리]. 팔은 끈·가방 위에서 0에 가깝고, 가방은 끈·가방 위에서만 움직인다.
+// 영역이 겹쳐서 변위가 더해지지 않게 합이 1을 넘으면 나눠서 맞춘다.
+function skinWeights(rig: Rig, mask: Mask, x: number, y: number): number[] {
+  const g = (l: Limb) => {
+    const qx = (x - l.c[0]) / l.s[0];
+    const qy = (y - l.c[1]) / l.s[1];
+    return Math.exp(-0.5 * (qx * qx + qy * qy));
+  };
+  const mi = Math.min(mask.w - 1, Math.max(0, Math.round(x / 2 - 0.5)));
+  const mj = Math.min(mask.h - 1, Math.max(0, Math.round(y / 2 - 0.5)));
+  const acc = mask.m[mj * mask.w + mi];
+  const accBag = mask.mb[mj * mask.w + mi];
+  const t = Math.min(1, Math.max(0, (y - rig.head.y0) / (rig.head.y1 - rig.head.y0)));
+  const head = 1 - t * t * (3 - 2 * t);
+  const w = [g(rig.armL) * (1 - acc), g(rig.armR) * (1 - acc), g(rig.bag) * accBag, g(rig.footL), g(rig.footR), head];
+  const sum = w.reduce((a, b) => a + b, 0);
+  return sum > 1 ? w.map((v) => v / sum) : w;
+}
+
 function compile(gl: WebGLRenderingContext, type: number, src: string): WebGLShader {
   const s = gl.createShader(type);
   if (!s) throw new Error("no shader");
@@ -260,6 +338,7 @@ type Layer = {
 type LayerOpts = { lift?: number; bend?: boolean; uvr?: [number, number, number, number]; fc?: [number, number]; z?: number };
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+const NO_WEIGHTS = [0, 0, 0, 0, 0, 0];
 
 export async function createEngine(
   canvas: HTMLCanvasElement,
@@ -282,6 +361,7 @@ export async function createEngine(
     hasUmbrella ? loadImage(resolve(`mongsil-${weather}-umbrella.png`)) : Promise.resolve(null),
   ]);
   const D = readDepth(dimg);
+  const accMask = accessoryMask(img);
   const W = img.naturalWidth;
   const H = img.naturalHeight;
   const marginX = CANVAS_MARGIN.x * W;
@@ -303,7 +383,7 @@ export async function createEngine(
 
   const uniformNames = [
     "u_rect", "u_uvr", "u_ltf", "u_ltr", "u_bend", "u_size", "u_pivot", "u_canvas", "u_off", "u_rot", "u_pose",
-    "u_head", "u_headA", "u_skin", "u_umb", "u_limbA", "u_limbB", "u_limbC", "u_tex", "u_alpha", "u_shadeK", "u_glint",
+    "u_head", "u_headA", "u_skin", "u_umb", "u_limbB", "u_limbC", "u_tex", "u_alpha", "u_shadeK", "u_glint",
   ] as const;
   const U = {} as Record<(typeof uniformNames)[number], WebGLUniformLocation | null>;
   for (const n of uniformNames) U[n] = gl.getUniformLocation(prog, n);
@@ -312,8 +392,10 @@ export async function createEngine(
     z: gl.getAttribLocation(prog, "a_z"),
     n: gl.getAttribLocation(prog, "a_n"),
     b: gl.getAttribLocation(prog, "a_b"),
+    w: gl.getAttribLocation(prog, "a_w"),
+    w2: gl.getAttribLocation(prog, "a_w2"),
   };
-  const STRIDE = 6 * 4;
+  const STRIDE = 12 * 4;
 
   const textures: WebGLTexture[] = [];
   const buffers: WebGLBuffer[] = [];
@@ -362,7 +444,9 @@ export async function createEngine(
             bend = SMILE.sag[k0] * (1 - (k - k0)) + SMILE.sag[k0 + 1] * (k - k0);
           }
         }
-        verts.push(u, v, z, -dzx / l, -dzy / l, bend);
+        // 우산 부품(깊이 고정)은 u_skin 경로로 따로 움직여서 가중치가 없다
+        const sw = o.z != null ? NO_WEIGHTS : skinWeights(rig, accMask, x, y);
+        verts.push(u, v, z, -dzx / l, -dzy / l, bend, ...sw);
       }
     }
     for (let j = 0; j < ny; j++) {
@@ -441,6 +525,10 @@ export async function createEngine(
     g.vertexAttribPointer(A.n, 2, g.FLOAT, false, STRIDE, 12);
     g.enableVertexAttribArray(A.b);
     g.vertexAttribPointer(A.b, 1, g.FLOAT, false, STRIDE, 20);
+    g.enableVertexAttribArray(A.w);
+    g.vertexAttribPointer(A.w, 4, g.FLOAT, false, STRIDE, 24);
+    g.enableVertexAttribArray(A.w2);
+    g.vertexAttribPointer(A.w2, 2, g.FLOAT, false, STRIDE, 40);
     g.bindTexture(g.TEXTURE_2D, L.tex);
     g.uniform4f(U.u_rect, L.rect.x, L.rect.y, L.rect.w, L.rect.h);
     g.uniform4f(U.u_uvr, L.uvr[0], L.uvr[1], L.uvr[2], L.uvr[3]);
@@ -454,7 +542,6 @@ export async function createEngine(
   }
 
   const limbs = [rig.armL, rig.armR, rig.bag, rig.footL, rig.footR];
-  const limbA = new Float32Array(limbs.flatMap((l) => [l.c[0], l.c[1], l.s[0], l.s[1]]));
   const limbB = new Float32Array(5 * 4);
   const limbC = new Float32Array(5 * 2);
   const pivot = rig.pivot;
@@ -471,7 +558,7 @@ export async function createEngine(
     g.uniform1f(U.u_shadeK, P.shadeK ?? 0.5);
     g.uniform1i(U.u_tex, 0);
     // 스키닝 값
-    g.uniform4f(U.u_head, rig.head.p[0], rig.head.p[1], rig.head.y0, rig.head.y1);
+    g.uniform2f(U.u_head, rig.head.p[0], rig.head.p[1]);
     g.uniform3f(U.u_headA, P.headTilt ?? 0, P.headShiftX ?? 0, P.headShiftY ?? 0);
     const ang = [P.armL ?? 0, P.armR ?? 0, P.bag ?? 0, 0, 0];
     const lift = [0, 0, 0, P.footL ?? 0, P.footR ?? 0];
@@ -484,7 +571,6 @@ export async function createEngine(
       limbC[i * 2 + 1] = -lift[i];
     });
     g.uniform1f(U.u_skin, 0);
-    g.uniform4fv(U.u_limbA, limbA);
     g.uniform4fv(U.u_limbB, limbB);
     g.uniform2fv(U.u_limbC, limbC);
 
@@ -510,18 +596,19 @@ export async function createEngine(
       ["eyeR", "arcR", "arcUpR", f.eyeR, f.blinkR],
     ];
     for (const [open, calm, happy, mix, blink] of eyes) {
-      const eo = sprites[open];
-      if (eo && mix.open > 0.01) {
-        // 깜빡이면 세로로 납작해지고 살짝 옆으로 벌어진다.
-        // 감은 눈(‿·⌒)에서 뜨는 중이면 선처럼 납작한 데서 커지면서 나타난다.
-        const bl = Math.max(blink, mix.calm + mix.happy > 0.01 ? 1 - mix.open : 0);
-        draw(eo, { tf: [eo.fx, eo.fy, 1 + 0.1 * bl, 1 - 0.92 * bl], tr: [lx, ly], alpha: mix.open });
+      // 한 번에 한 종류만, 투명도 없이 그린다(겹친 눈·회색 반투명 눈이 생기지 않는다).
+      // 나타나고 사라지는 건 세로 크기로만: 뜬 눈은 감기듯 납작해지고, 감은 눈(‿·⌒)은 세로로 줄어든다.
+      const v = Math.max(mix.open, mix.calm, mix.happy);
+      if (v < 0.02) continue;
+      if (mix.open === v) {
+        const eo = sprites[open];
+        // 깜빡이면 세로로 납작해지고 살짝 옆으로 벌어진다
+        const bl = Math.max(blink, 1 - clamp01(v));
+        if (eo) draw(eo, { tf: [eo.fx, eo.fy, 1 + 0.1 * bl, 1 - 0.92 * bl], tr: [lx, ly] });
+      } else {
+        const L = sprites[mix.calm === v ? calm : happy];
+        if (L) draw(L, { tf: [L.fx, L.fy, 1, 0.2 + 0.8 * clamp01(v)] });
       }
-      const ec = sprites[calm];
-      // 감은 눈끼리 바뀔 때(⌒ ↔ ‿)는 사라지는 쪽이 납작해지고 나타나는 쪽이 자라나서 겹쳐 보이지 않는다
-      if (ec && mix.calm > 0.01) draw(ec, { tf: [ec.fx, ec.fy, 1, 0.3 + 0.7 * clamp01(mix.calm)], alpha: mix.calm });
-      const eh = sprites[happy];
-      if (eh && mix.happy > 0.01) draw(eh, { tf: [eh.fx, eh.fy, 1, 0.3 + 0.7 * clamp01(mix.happy)], alpha: mix.happy });
     }
     for (const b of ["browL", "browR"] as const) {
       const L = sprites[b];

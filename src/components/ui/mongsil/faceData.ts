@@ -8,30 +8,30 @@ export const FACE: Record<"sunny" | "cloudy" | "rain", FaceData> = {
  "sunny": {
   "atlas": {
    "w": 256,
-   "h": 294
+   "h": 312
   },
   "patch": {
    "ax": 0,
    "ay": 0,
-   "x": 101,
-   "y": 106,
-   "w": 223,
-   "h": 126
+   "x": 98,
+   "y": 103,
+   "w": 229,
+   "h": 124
   },
   "sprites": {
    "glasses": {
     "ax": 0,
-    "ay": 128,
-    "w": 203,
-    "h": 72,
+    "ay": 126,
+    "w": 231,
+    "h": 92,
     "cx": 215.41,
     "cy": 151.33,
-    "ox": 104.41,
-    "oy": 35.33
+    "ox": 118.41,
+    "oy": 39.33
    },
    "eyeL": {
-    "ax": 205,
-    "ay": 128,
+    "ax": 0,
+    "ay": 220,
     "w": 42,
     "h": 49,
     "cx": 158.02,
@@ -40,8 +40,8 @@ export const FACE: Record<"sunny" | "cloudy" | "rain", FaceData> = {
     "oy": 24.08
    },
    "eyeR": {
-    "ax": 0,
-    "ay": 202,
+    "ax": 44,
+    "ay": 220,
     "w": 43,
     "h": 49,
     "cx": 266.62,
@@ -50,8 +50,8 @@ export const FACE: Record<"sunny" | "cloudy" | "rain", FaceData> = {
     "oy": 24.59
    },
    "arcL": {
-    "ax": 45,
-    "ay": 202,
+    "ax": 89,
+    "ay": 220,
     "w": 56,
     "h": 33,
     "cx": 158.22,
@@ -60,8 +60,8 @@ export const FACE: Record<"sunny" | "cloudy" | "rain", FaceData> = {
     "oy": 16.69
    },
    "arcR": {
-    "ax": 103,
-    "ay": 202,
+    "ax": 147,
+    "ay": 220,
     "w": 57,
     "h": 32,
     "cx": 265.62,
@@ -70,8 +70,8 @@ export const FACE: Record<"sunny" | "cloudy" | "rain", FaceData> = {
     "oy": 16.3
    },
    "arcUpL": {
-    "ax": 162,
-    "ay": 202,
+    "ax": 0,
+    "ay": 271,
     "w": 56,
     "h": 33,
     "cx": 158.22,
@@ -80,8 +80,8 @@ export const FACE: Record<"sunny" | "cloudy" | "rain", FaceData> = {
     "oy": 16.31
    },
    "arcUpR": {
-    "ax": 0,
-    "ay": 253,
+    "ax": 58,
+    "ay": 271,
     "w": 57,
     "h": 32,
     "cx": 265.62,
@@ -90,8 +90,8 @@ export const FACE: Record<"sunny" | "cloudy" | "rain", FaceData> = {
     "oy": 15.7
    },
    "smile": {
-    "ax": 59,
-    "ay": 253,
+    "ax": 117,
+    "ay": 271,
     "w": 60,
     "h": 33,
     "cx": 212.32,
@@ -100,8 +100,8 @@ export const FACE: Record<"sunny" | "cloudy" | "rain", FaceData> = {
     "oy": 17.12
    },
    "mouthO": {
-    "ax": 121,
-    "ay": 253,
+    "ax": 179,
+    "ay": 271,
     "w": 36,
     "h": 41,
     "cx": 211.82,

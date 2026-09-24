@@ -5,7 +5,8 @@
 //  - "calm"   : 원본 표정 그대로, 제자리에서 ±7° 안팎으로만 움직임(작은 움직임).
 //  - "lively" : 몸을 크게 쓰고(고개 갸웃·통통·팔 흔들기·뒤뚱뒤뚱 걷기) 표정이 계속 바뀐다.
 //               13초쯤 걸리는 한 바퀴를 "장면(beat)" 여러 개로 짠다. 장면마다 표정과 자세 목표가 있고,
-//               장면이 바뀔 때 표정은 fade초 동안 섞이고 자세는 move초 동안 부드럽게 넘어간다.
+//               장면이 바뀔 때 표정은 fade초 동안 섞이고(눈은 섞지 않고 0.24초 동안 감았다 뜨며 바뀐다)
+//               자세는 move초 동안 부드럽게 넘어간다.
 //               한 바퀴가 끝날 때마다 걷는 방향이 좌우로 번갈아 바뀐다.
 import type { MongsilWeather } from "./layout";
 import { REST_FACE, type EyeMix, type Face, type Pose } from "./engine";
@@ -39,11 +40,30 @@ const OPEN = E(1, 0, 0);
 const HAPPY = E(0, 0, 1);
 const face = (w: MongsilWeather, o: Partial<Face>): Face => ({ ...REST_FACE[w], ...o });
 
+const NO_EYE = E(0, 0, 0);
 const lerpEye = (a: EyeMix, b: EyeMix, k: number): EyeMix => ({ open: lerp(a.open, b.open, k), calm: lerp(a.calm, b.calm, k), happy: lerp(a.happy, b.happy, k) });
-function lerpFace(a: Face, b: Face, k: number): Face {
+type EyeKind = keyof EyeMix;
+function eyeKind(m: EyeMix): EyeKind | null {
+  const v = Math.max(m.open, m.calm, m.happy);
+  if (v < 0.01) return null;
+  return m.open === v ? "open" : m.calm === v ? "calm" : "happy";
+}
+// 눈 종류가 바뀌면 섞지 않는다: 앞 절반에 이전 눈이 감기고(작아지고), 가운데에서 바꾸고, 뒤 절반에 새 눈이 뜬다(자란다).
+// 반투명 눈·겹친 눈·오래 남는 검은 줄이 생기지 않는다. 같은 종류끼리는 그냥 섞는다.
+function eyeSwap(a: EyeMix, b: EyeMix, k: number): EyeMix {
+  const ka = eyeKind(a);
+  const kb = eyeKind(b);
+  if (ka === kb) return lerpEye(a, b, k);
+  if (k < 0.5) return ka ? { ...NO_EYE, [ka]: a[ka] * (1 - easeInOut(k / 0.5)) } : NO_EYE;
+  return kb ? { ...NO_EYE, [kb]: b[kb] * easeInOut((k - 0.5) / 0.5) } : NO_EYE;
+}
+const EYE_SWAP = 0.24; // 눈 바꾸는 시간(초): 감김 0.12 + 뜸 0.12 (깜빡임 한 번 길이)
+
+// 표정 섞기: 입·눈썹·선글라스·시선은 k로 부드럽게, 눈은 ek(0~1)에 맞춰 감았다 뜨며 바꾼다.
+function lerpFace(a: Face, b: Face, k: number, ek: number = k): Face {
   return {
-    eyeL: lerpEye(a.eyeL, b.eyeL, k),
-    eyeR: lerpEye(a.eyeR, b.eyeR, k),
+    eyeL: eyeSwap(a.eyeL, b.eyeL, ek),
+    eyeR: eyeSwap(a.eyeR, b.eyeR, ek),
     blinkL: lerp(a.blinkL, b.blinkL, k),
     blinkR: lerp(a.blinkR, b.blinkR, k),
     lookX: lerp(a.lookX, b.lookX, k),
@@ -106,6 +126,9 @@ function walk(arm = 0.3, sway = 1): (t: number) => Body {
     };
   };
 }
+// 팔 흔들기: 팔·끈·가방이 한 장 그림이라 크게 돌리면 끈이 꺾이고 손이 납작해진다. 올림 + 흔들림 최대 약 0.3rad.
+const ARM_UP = 0.22;
+const ARM_WAVE = 0.08;
 const TRAVEL = 68; // 걸어서 움직이는 거리(몸 그림 px). 캔버스 여백(가로 28%) 안에 들어온다.
 const FACE_YAW = 0.2; // 걷는 방향을 보는 각도
 
@@ -135,7 +158,7 @@ function sunnyScript(dir: number): Beat[] {
     { d: 1.8, face: grin, base: { headTilt: 0.2, yaw: -0.12 * dir, roll: 0.03, armL: 0.3 }, hops: [0.5] },
     { d: 0.45, face: lift, fade: 0.35, base: { headTilt: -0.05, pitch: -0.05 }, move: 0.45 },
     { d: 1.8, face: up, fade: 0.3, base: { headTilt: -0.1, yaw: 0.08 * dir, pitch: 0.02 }, gaze: sweep(1.8, 3.5, 1) },
-    { d: 1.6, face: wink, fade: 0.25, base: { headTilt: 0.22, yaw: -0.1 * dir, armL: 0.55 }, hops: [0.35], osc: (t) => ({ armL: 0.22 * Math.sin(TAU * 2.2 * t) }) },
+    { d: 1.6, face: wink, fade: 0.25, base: { headTilt: 0.22, yaw: -0.1 * dir, armL: ARM_UP }, hops: [0.35], osc: (t) => ({ armL: ARM_WAVE * Math.sin(TAU * 2.2 * t) }) },
     { d: 0.9, face: down, fade: 0.4, base: {}, move: 0.5 },
     ...walkBeats(stroll, dir, 0.3, 1),
     { d: 0.7, face: face(w, { smile: 1 }), fade: 0.5, base: {}, move: 0.6 },
@@ -154,7 +177,7 @@ function cloudyScript(dir: number): Beat[] {
   return [
     { d: 2.0, face: doze, fade: 0.5, base: { headTilt: -0.14, roll: -0.02, pitch: 0.04 }, move: 0.8, osc: (t) => ({ pitch: 0.015 * Math.sin((TAU * t) / 2.0) }) },
     { d: 2.0, face: open, fade: 0.45, base: { headTilt: 0.2, yaw: 0.1 * dir }, move: 0.7, gaze: sweep(2.0, 3.5, 0.8) },
-    { d: 1.9, face: joy, fade: 0.3, base: { headTilt: -0.18, roll: 0.03, armL: 0.5, armR: -0.5 }, hops: [0.5], osc: (t) => ({ armL: 0.2 * Math.sin(TAU * 2 * t), armR: -0.2 * Math.sin(TAU * 2 * t + 0.6) }) },
+    { d: 1.9, face: joy, fade: 0.3, base: { headTilt: -0.18, roll: 0.03, armL: ARM_UP, armR: -ARM_UP }, hops: [0.5], osc: (t) => ({ armL: ARM_WAVE * Math.sin(TAU * 2 * t), armR: -ARM_WAVE * Math.sin(TAU * 2 * t + 0.6) }) },
     { d: 1.5, face: wink, fade: 0.25, base: { headTilt: 0.22, yaw: -0.08 * dir }, hops: [0.4] },
     { d: 0.9, face: calm, fade: 0.4, base: {}, move: 0.5 },
     ...walkBeats(stroll, dir, 0.3, 1),
@@ -246,7 +269,7 @@ function lively(weather: MongsilWeather, t: number, tapAge: number | null): Pose
 
   // 표정
   const fk = easeInOut(clamp(tau / (beat.fade ?? 0.3), 0, 1));
-  let f = lerpFace(prev.face, beat.face, fk);
+  let f = lerpFace(prev.face, beat.face, fk, clamp(tau / EYE_SWAP, 0, 1));
   const gz = beat.gaze ? beat.gaze(tau) : [0, 0];
   const blink = blinkAt(t, 3.3, BLINK_PHASE[weather]);
   f = { ...f, lookX: f.lookX + gz[0] * env, lookY: f.lookY + gz[1] * env, blinkL: Math.max(f.blinkL, blink), blinkR: Math.max(f.blinkR, blink) };
