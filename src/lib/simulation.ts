@@ -21,24 +21,34 @@ export function intensityRatio(kcal: number): number {
   return Math.min(1, Math.max(0, (kcal - ANCHOR_LOW) / (ANCHOR_HIGH - ANCHOR_LOW)));
 }
 
-export interface Simulation {
-  kcal: number;
+export interface Components {
   fatKg: number;
   gutStartKg: number;
   waterStartKg: number; // 글리코겐·수분 + 나트륨 세포외액(하나의 곡선)
+}
+
+// 4장 5: 표시체중_변화량(t)
+export function displayedKg({ fatKg, gutStartKg, waterStartKg }: Components, t: number): number {
+  return (
+    fatKg +
+    gutStartKg * Math.max(0, 1 - t / GUT_CLEAR_H) +
+    waterStartKg * Math.max(0, 1 - t / WATER_CLEAR_H)
+  );
+}
+
+export interface Simulation extends Components {
+  kcal: number;
   displayedAt: (hours: number) => number; // 표시체중 변화량(kg)
 }
 
 export function simulate(kcal: number): Simulation {
   const r = intensityRatio(kcal);
-  const gutStartKg = lerp(GUT_KG, r);
-  const waterStartKg = lerp(GLYCOGEN_WATER_KG, r) + lerp(SODIUM_FLUID_KG, r);
-  const fatKg = kcal / KCAL_PER_KG_FAT;
-  const displayedAt = (t: number) =>
-    fatKg +
-    gutStartKg * Math.max(0, 1 - t / GUT_CLEAR_H) +
-    waterStartKg * Math.max(0, 1 - t / WATER_CLEAR_H);
-  return { kcal, fatKg, gutStartKg, waterStartKg, displayedAt };
+  const c: Components = {
+    fatKg: kcal / KCAL_PER_KG_FAT,
+    gutStartKg: lerp(GUT_KG, r),
+    waterStartKg: lerp(GLYCOGEN_WATER_KG, r) + lerp(SODIUM_FLUID_KG, r),
+  };
+  return { kcal, ...c, displayedAt: (t) => displayedKg(c, t) };
 }
 
 // 화면 문구용 "약 0.2kg" / "약 +1.7kg". 예보라 소수 첫째 자리까지만 쓴다(SIMULATION.md 6장).
