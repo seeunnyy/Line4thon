@@ -56,6 +56,17 @@ export const HOME_BUBBLE: Record<"default" | "ended" | "empty", Record<Weather, 
   },
 };
 
+// 홈 히어로 "오늘의 상태" 카드(화면 시안용). 목표 수치는 docs/SIMULATION.md에 없는 값이라 전부 샘플이다.
+// 활동은 걸음 수·목표 진행바 없이 한 일만 보여준다(DESIGN.md "수치 압박 요소" 제외 원칙).
+export const HOME_STATUS = {
+  condition: "좋음",
+  calorie: { value: 1240, goal: 1800 },
+  water: { value: 1.2, goal: 2.0 },
+  activity: { value: "산책 30분" },
+  meals: { done: 2, total: 3 },
+  weightChange: { value: -0.4, period: "지난 7일" },
+};
+
 export const SAMPLE_EVENT = {
   id: "sample-1",
   type: "회식",

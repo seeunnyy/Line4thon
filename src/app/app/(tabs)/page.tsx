@@ -10,8 +10,11 @@ import EmptyState from "@/components/ui/EmptyState";
 import Card from "@/components/ui/Card";
 import SampleTag from "@/components/ui/SampleTag";
 import Button from "@/components/ui/Button";
+import StatusStatCard from "@/components/ui/StatusStatCard";
+import Link from "next/link";
 import {
   HOME_BUBBLE,
+  HOME_STATUS,
   WEEK_SAMPLE,
   WEEK_SAMPLE_EMPTY,
   type Weather,
@@ -20,7 +23,7 @@ import {
 type HomeState = "default" | "ended" | "empty";
 
 // UI 시안용 미리보기 스위치(로직 구현 단계에서 지운다):
-//   ?state=default|ended|empty  ?weather=sunny|cloudy|rain  ?motion=lively|calm(몽실이 움직임 크기)
+//   ?state=default|ended|empty  ?weather=sunny|cloudy|rain  ?motion=calm|lively(몽실이 움직임 크기, 기본 calm)
 export default async function HomePage({
   searchParams,
 }: {
@@ -29,7 +32,9 @@ export default async function HomePage({
   const sp = await searchParams;
   const state: HomeState = (["default", "ended", "empty"] as const).find((s) => s === sp.state) ?? "default";
   const weather: Weather = (["sunny", "cloudy", "rain"] as const).find((w) => w === sp.weather) ?? "sunny";
-  const motion = sp.motion === "calm" ? "calm" : "lively";
+  // 오늘의 상태 카드와 함께 두는 히어로라 기본은 calm(작게). ?motion=lively로 크게 볼 수 있다.
+  const motion = sp.motion === "lively" ? "lively" : "calm";
+  const s = HOME_STATUS;
 
   return (
     <>
@@ -42,8 +47,56 @@ export default async function HomePage({
           <SpeechBubble icon="sun" label="오늘의 예보">
             {HOME_BUBBLE[state][weather]}
           </SpeechBubble>
-          <div className="mt-6 flex justify-center">
-            <Mongsil weather={weather} height={280} motion={motion} />
+          {/* 오늘의 상태: 왼쪽 3 | 몽실이 | 오른쪽 3. 폭 확보를 위해 몽실이는 calm + 190px */}
+          <div className="mt-4 flex justify-end">
+            <SampleTag />
+          </div>
+          <div className="mt-2 flex items-stretch gap-1.5">
+            <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
+              <StatusStatCard icon="heart" label="컨디션" value={s.condition} />
+              <StatusStatCard
+                icon="calorie"
+                label="칼로리"
+                value={`${s.calorie.value.toLocaleString()}kcal`}
+                caption={`/ ${s.calorie.goal.toLocaleString()}`}
+                progress={s.calorie.value / s.calorie.goal}
+                barColor="cobalt"
+              />
+              <StatusStatCard
+                icon="water"
+                label="물 섭취량"
+                value={`${s.water.value.toFixed(1)}L`}
+                caption={`/ ${s.water.goal.toFixed(1)}L`}
+                progress={s.water.value / s.water.goal}
+                barColor="primary"
+              />
+            </div>
+            <Mongsil weather={weather} height={190} motion={motion} className="self-center" />
+            <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
+              <StatusStatCard icon="activity" label="활동" value={s.activity.value} />
+              <StatusStatCard
+                icon="food"
+                label="식단 기록"
+                value={`${s.meals.done}/${s.meals.total}끼`}
+                progress={s.meals.done / s.meals.total}
+                barColor="positive"
+              />
+              <StatusStatCard
+                icon="scale"
+                label="체중 변화"
+                value={`${s.weightChange.value > 0 ? "+" : ""}${s.weightChange.value}kg`}
+                caption={s.weightChange.period}
+              />
+            </div>
+          </div>
+          {/* 맞춤 기록: 버튼이 아니라 칩 스타일(bg surface-low, 반경 0, 높이 44). 시안 단계라 기록 탭으로만 이동한다 */}
+          <div className="mt-4 flex justify-center">
+            <Link
+              href="/app/log"
+              className="inline-flex h-11 items-center justify-center bg-surface-low px-4 text-body text-subtext"
+            >
+              맞춤 기록
+            </Link>
           </div>
           <div className="mt-4 flex justify-center">
             <WeatherPill weather={weather} />

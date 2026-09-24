@@ -23,7 +23,10 @@ export type IconName =
   | "holiday"
   | "exam"
   | "clock"
-  | "user";
+  | "user"
+  | "calorie"
+  | "activity"
+  | "scale";
 
 const REGISTERED: Partial<Record<IconName, React.ReactNode>> = {
   "arrow-right": (
