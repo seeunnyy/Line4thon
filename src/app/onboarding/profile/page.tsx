@@ -9,6 +9,7 @@ import ChipGroup from "@/components/ui/ChipGroup";
 import Chip from "@/components/ui/Chip";
 import StickyBottom from "@/components/ui/StickyBottom";
 import Button from "@/components/ui/Button";
+import { saveDraftNickname } from "@/lib/onboardingDraft";
 
 const TRIES = ["1차", "2차", "3차", "4차", "5차 이상"] as const;
 
@@ -67,7 +68,10 @@ export default function ProfilePage() {
           size="lg"
           icon
           disabled={!ready}
-          onClick={() => router.push("/onboarding/body")}
+          onClick={() => {
+            saveDraftNickname(nickname.trim());
+            router.push("/onboarding/body");
+          }}
         >
           다음
         </Button>
