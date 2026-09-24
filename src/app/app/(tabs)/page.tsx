@@ -1,7 +1,7 @@
 import Header from "@/components/ui/Header";
 import HeroBackdrop from "@/components/ui/HeroBackdrop";
 import SpeechBubble from "@/components/ui/SpeechBubble";
-import Avatar from "@/components/ui/Avatar";
+import Mongsil from "@/components/ui/Mongsil";
 import WeatherPill from "@/components/ui/WeatherPill";
 import SectionTitle from "@/components/ui/SectionTitle";
 import WeekStrip from "@/components/ui/WeekStrip";
@@ -41,8 +41,8 @@ export default async function HomePage({
           <SpeechBubble icon="sun" label="오늘의 예보">
             {HOME_BUBBLE[state][weather]}
           </SpeechBubble>
-          <div className="mt-7 flex justify-center">
-            <Avatar size={140} ring />
+          <div className="mt-6 flex justify-center">
+            <Mongsil weather={weather} height={280} />
           </div>
           <div className="mt-4 flex justify-center">
             <WeatherPill weather={weather} />

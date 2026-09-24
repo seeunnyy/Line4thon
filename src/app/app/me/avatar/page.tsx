@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Header from "@/components/ui/Header";
 import Button from "@/components/ui/Button";
-import Avatar from "@/components/ui/Avatar";
+import Mongsil from "@/components/ui/Mongsil";
 import HeroBackdrop from "@/components/ui/HeroBackdrop";
 import SegmentedTabs from "@/components/ui/SegmentedTabs";
 import { AVATAR_CATEGORIES, SKIN_TONES, type AvatarCategory } from "@/mocks/sample";
@@ -41,8 +41,8 @@ export default function AvatarCustomizePage() {
       />
 
       <main className="flex-1 pb-8">
-        <HeroBackdrop weather="sunny" className="flex justify-center py-6">
-          <Avatar size={180} ring />
+        <HeroBackdrop weather="sunny" className="flex justify-center py-5">
+          <Mongsil weather="sunny" height={240} />
         </HeroBackdrop>
 
         <SegmentedTabs

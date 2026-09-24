@@ -48,8 +48,9 @@ User → 스플래시/인트로 → 온보딩(정보 입력 → 아바타) → �
 ## Source Structure
 - `src/`: application source code
   - `src/app/`: 라우트 (탭 화면은 `app/app/(tabs)/`, 하위 흐름은 그 밖에 둔다)
-  - `src/components/ui/`: 공통 UI 컴포넌트 (Button, Chip, Card, Header, BottomSheet 등)
+  - `src/components/ui/`: 공통 UI 컴포넌트 (Button, Chip, Card, Header, BottomSheet 등). 아바타는 `Avatar`(원형 얼굴)와 `Mongsil`(전신 + 날씨 소품). 전신의 몸통은 클라이언트 컴포넌트 `MongsilBody`가 정지 그림 위에 2.5D WebGL 캔버스를 얹어 움직이고, 그 엔진은 `src/components/ui/mongsil/`(`layout.ts` 좌표·`motion.ts` 날씨별 안무·`engine.ts` WebGL, 외부 라이브러리 없음)에 있다. WebGL을 못 쓰면 정지 그림 + CSS 숨쉬기로 대체된다
   - `src/mocks/sample.ts`: 화면 시안용 샘플 데이터 (기능 구현 때 저장 모듈로 교체)
+- `public/avatar/`: 몽실이 에셋(투명 PNG, 2.5D 깊이맵 PNG, 소나기 얼굴 부품 PNG). 내용은 docs/DESIGN.md의 Character & Avatar Rules 참고
 - `docs/`: project documents
 - `tests/`: test code
 

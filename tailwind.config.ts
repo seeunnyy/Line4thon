@@ -59,10 +59,27 @@ const config: Config = {
       keyframes: {
         "sheet-up": { from: { transform: "translateY(100%)" }, to: { transform: "translateY(0)" } },
         "fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },
+        // 몽실이: 몸은 숨 쉬듯 살짝, 해는 둥실, 구름은 좌우로 천천히, 빗방울은 떨어지며 사라진다.
+        "mongsil-breathe": { "0%, 100%": { transform: "scaleY(1)" }, "50%": { transform: "scaleY(1.012)" } },
+        "mongsil-bob": {
+          "0%, 100%": { transform: "translateY(0) rotate(-3deg)" },
+          "50%": { transform: "translateY(-5px) rotate(3deg)" },
+        },
+        "mongsil-drift": { "0%, 100%": { transform: "translateX(-5px)" }, "50%": { transform: "translateX(5px)" } },
+        "mongsil-fall": {
+          "0%": { transform: "translateY(-8px)", opacity: "0" },
+          "20%": { opacity: "1" },
+          "80%": { opacity: "1" },
+          "100%": { transform: "translateY(24px)", opacity: "0" },
+        },
       },
       animation: {
         "sheet-up": "sheet-up 240ms ease-out",
         "fade-in": "fade-in 200ms ease-out",
+        "mongsil-breathe": "mongsil-breathe 3.6s ease-in-out infinite",
+        "mongsil-bob": "mongsil-bob 4.2s ease-in-out infinite",
+        "mongsil-drift": "mongsil-drift 5.5s ease-in-out infinite",
+        "mongsil-fall": "mongsil-fall 1.9s linear infinite",
       },
     },
   },

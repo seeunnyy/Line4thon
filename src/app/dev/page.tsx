@@ -9,7 +9,7 @@ const GROUPS: { title: string; links: { href: string; label: string }[] }[] = [
     links: [
       { href: "/", label: "스플래시" },
       { href: "/onboarding/profile", label: "정보 입력" },
-      { href: "/onboarding/avatar", label: "아바타 선택" },
+      { href: "/onboarding/avatar", label: "아바타 설정 (몽실이 소개)" },
     ],
   },
   {
