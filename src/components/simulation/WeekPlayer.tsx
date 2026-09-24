@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import Button from "@/components/ui/Button";
 import Icon from "@/components/ui/Icon";
-import SampleTag from "@/components/ui/SampleTag";
 import DualGraph from "./DualGraph";
 import DayScrubber from "./DayScrubber";
 import ForecastStage from "./ForecastStage";
-import type { ForecastStory } from "@/mocks/sample";
+import type { ForecastStory } from "@/lib/model";
+import type { Components } from "@/lib/simulation";
 
 // 한 장면에 머무는 시간(화면 연출 값, 계산과 무관)
 const SCENE_MS = 2600;
@@ -18,9 +18,11 @@ const SCENE_MS = 2600;
 // 화면 밖으로 나가거나 탭이 가려지면 재생 타이머가 쉬고, 돌아오면 이어진다.
 export default function WeekPlayer({
   story,
+  sim,
   initialScene = 0,
 }: {
   story: ForecastStory;
+  sim: Components;
   initialScene?: number;
 }) {
   const last = story.scenes.length - 1;
@@ -124,12 +126,9 @@ export default function WeekPlayer({
           scene={scene}
           top={
             <>
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-body text-subtext">
-                  {story.title} · {story.amount}
-                </p>
-                <SampleTag>직접 입력 샘플</SampleTag>
-              </div>
+              <p className="text-body text-subtext">
+                {story.title} · {story.amount}
+              </p>
               {progress}
             </>
           }
@@ -138,7 +137,7 @@ export default function WeekPlayer({
               점을 누르면 그 시점의 장면으로 이동한다(pickHours). 보이는 섹션 제목은 두지 않는다(범례가 같은 뜻). */}
           <h2 className="sr-only">표시체중 vs 실제 지방</h2>
           <div className="mt-2 bg-card px-3 shadow-panel">
-            <DualGraph hours={scene.hours} onPick={pickHours} compact />
+            <DualGraph sim={sim} hours={scene.hours} onPick={pickHours} compact />
           </div>
 
           <div className="mt-2">

@@ -1,51 +1,52 @@
 "use client";
 
-import { useId, useState } from "react";
-import SampleTag from "@/components/ui/SampleTag";
-import { GRAPH_POINTS } from "@/mocks/sample";
+import { useId } from "react";
+import { SPAN_H, WATER_CLEAR_H, displayedKg, kgLabel, type Components } from "@/lib/simulation";
 
-// 이중 그래프(표시체중 vs 실제 지방)의 UI 시안. 숫자 축은 없고, 곡선은 SIMULATION.md 3장의 모양만 따른 예시다:
-// 표시체중은 장내용물(48h)·수분(60h)이 선형으로 줄어들며 실제 지방선에 붙는다.
+// 이중 그래프(표시체중 vs 실제 지방). 곡선은 시뮬레이션 엔진(SIMULATION.md 4장)의 계산값으로 그린다:
+// 표시체중은 장내용물(48h)·수분(60h)이 선형으로 줄어들며 실제 지방선에 붙는다. 숫자 축은 없고 높이는 이벤트 직후 값 기준 비율이다.
 const W = 318;
 const H = 170;
-const BASE_Y = 158; // x축(기준선)
-const FAT_Y = 150; // 실제 지방 수평선
-const CURVE = "0,30 106,81 212,133 265,150 318,150";
-const AREA = `${CURVE} 318,${FAT_Y} 0,${FAT_Y}`;
+const BASE_Y = 158; // x축(0kg 기준선)
+const TOP_Y = 30; // 이벤트 직후 표시체중의 높이
 // 탭 지점: 이벤트 직후 · 24시간 · 48시간 · 72시간(표시체중 전체 수렴 48~72시간, SIMULATION.md 2장)
 const HOURS = [0, 24, 48, 72] as const;
-const SPAN_H = 72;
-const POINTS = [
-  { x: 0, y: 30 },
-  { x: 106, y: 81 },
-  { x: 212, y: 133 },
-  { x: 318, y: 150 },
-] as const;
+const AXIS = ["이벤트 직후", "24시간", "48시간", "72시간"] as const;
+// 선형 구간이 꺾이는 시점: 장내용물이 다 빠지는 48h, 수분이 다 빠지는 60h
+const KNOTS = [0, 24, 48, WATER_CLEAR_H, SPAN_H];
 
 const pct = (v: number, total: number) => `${(v / total) * 100}%`;
 
-// hours를 주면 스토리 모드(예보 결과의 한 주 미리 보기): 곡선이 그 시점까지만 그려지고, 점을 누르면 그 시점(시간)을 onPick으로 알린다.
-// hours가 null이면 이벤트 전이라 곡선을 그리지 않는다. hours를 안 주면 점을 눌러 설명을 보는 단독 모드다.
+// 예보 결과의 한 주 미리 보기에 붙는 그래프: 곡선이 재생 위치(hours)까지만 그려지고, 점을 누르면 그 시점(시간)을 onPick으로 알린다.
+// hours가 null이면 이벤트 전이라 곡선을 그리지 않는다.
 // compact는 무대 아래에 붙이는 낮은 판: 그림 높이만 줄이고(가로는 그대로) 선 굵기는 유지한다.
 export default function DualGraph({
+  sim,
   hours,
   onPick,
   compact = false,
 }: {
-  hours?: number | null;
-  onPick?: (hours: number) => void;
+  sim: Components;
+  hours: number | null;
+  onPick: (hours: number) => void;
   compact?: boolean;
-} = {}) {
-  const story = hours !== undefined;
-  const [picked, setPicked] = useState(1); // 단독 모드 기본: 24시간(다음 날)
-  const reached = (i: number) => !story || (hours !== null && HOURS[i] <= hours);
-  const active = story ? HOURS.reduce((acc, h, i) => (reached(i) ? i : acc), -1) : picked;
-  const reveal = story ? (hours === null ? 0 : Math.min(1, Math.max(0, hours / SPAN_H))) : 1;
+}) {
+  const peak = displayedKg(sim, 0);
+  const x = (t: number) => (t / SPAN_H) * W;
+  const y = (kg: number) => BASE_Y - (kg / peak) * (BASE_Y - TOP_Y);
+  const FAT_Y = y(sim.fatKg);
+  const CURVE = KNOTS.map((t) => `${x(t)},${y(displayedKg(sim, t))}`).join(" ");
+  const AREA = `${CURVE} ${W},${FAT_Y} 0,${FAT_Y}`;
+  const POINTS = HOURS.map((t) => ({ x: x(t), y: y(displayedKg(sim, t)) }));
+
+  const reached = (i: number) => hours !== null && HOURS[i] <= hours;
+  const active = HOURS.reduce((acc, _h, i) => (reached(i) ? i : acc), -1);
+  const reveal = hours === null ? 0 : Math.min(1, Math.max(0, hours / SPAN_H));
   const point = active >= 0 ? POINTS[active] : null;
-  const info = GRAPH_POINTS[Math.max(0, active)];
   const clipId = `dual-graph-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   // compact에서 세로로 눌러도 선 굵기·점선 간격이 변하지 않게 한다.
   const stroke = compact ? ({ vectorEffect: "non-scaling-stroke" } as const) : {};
+  const label = `표시체중과 실제 지방의 변화 그래프예요. 표시체중은 이벤트 직후 ${kgLabel(peak, true)}로 가장 높고, 다음 날 ${kgLabel(displayedKg(sim, 24), true)}, 48~72시간에 걸쳐 실제 지방 ${kgLabel(sim.fatKg)} 선에 가까워져요.`;
 
   return (
     <div className={compact ? "px-3 py-3" : "p-4"}>
@@ -64,14 +65,13 @@ export default function DualGraph({
             실제 지방
           </li>
         </ul>
-        <SampleTag>예시 곡선 · 샘플</SampleTag>
       </div>
 
       <div className={`relative ${compact ? "mt-2" : "mt-4"}`}>
         <svg
           viewBox={`0 0 ${W} ${H}`}
           role="img"
-          aria-label="표시체중과 실제 지방의 변화를 보여주는 예시 그래프예요. 표시체중은 이벤트 직후 가장 높고, 48~72시간에 걸쳐 실제 지방 선에 가까워져요."
+          aria-label={label}
           preserveAspectRatio={compact ? "none" : undefined}
           className={`block w-full ${compact ? "h-[96px]" : "h-auto"}`}
         >
@@ -125,7 +125,7 @@ export default function DualGraph({
           />
         </svg>
 
-        {story && hours === null && (
+        {hours === null && (
           <p className="absolute inset-x-0 top-[22%] text-center text-body text-subtext">
             이벤트가 끝나면 곡선이 그려져요
           </p>
@@ -136,11 +136,11 @@ export default function DualGraph({
           const selected = i === active;
           return (
             <button
-              key={GRAPH_POINTS[i].axis}
+              key={AXIS[i]}
               type="button"
-              aria-label={`${GRAPH_POINTS[i].axis} 시점 보기`}
+              aria-label={`${AXIS[i]} 시점 보기`}
               aria-pressed={selected}
-              onClick={() => (story ? onPick?.(HOURS[i]) : setPicked(i))}
+              onClick={() => onPick(HOURS[i])}
               style={{ left: pct(p.x, W), top: pct(p.y, H) }}
               className="absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-cobalt"
             >
@@ -161,26 +161,21 @@ export default function DualGraph({
 
       {/* x축 라벨: 점의 가로 위치와 맞춘다(양 끝은 안쪽 정렬) */}
       <div aria-hidden="true" className="relative mt-1 h-[18px] text-body text-subtext">
-        {GRAPH_POINTS.map((g, i) => {
-          const x = POINTS[i].x;
+        {AXIS.map((axis, i) => {
+          const px = POINTS[i].x;
           const shift = i === 0 ? "0" : i === POINTS.length - 1 ? "-100%" : "-50%";
           return (
             <span
-              key={g.axis}
-              style={{ left: pct(x, W), transform: `translateX(${shift})` }}
+              key={axis}
+              style={{ left: pct(px, W), transform: `translateX(${shift})` }}
               className={`absolute top-0 whitespace-nowrap ${i === active ? "font-bold text-ink" : ""}`}
             >
-              {g.axis}
+              {axis}
             </span>
           );
         })}
       </div>
 
-      {!story && (
-        <p aria-live="polite" className="mt-3 bg-surface-low px-3 py-3 text-body">
-          <span className="font-bold">{info.label}</span> · {info.text}
-        </p>
-      )}
     </div>
   );
 }

@@ -15,10 +15,13 @@ import type { IconName } from "@/components/ui/Icon";
 import {
   AMOUNT_PRESETS,
   EVENT_KINDS,
-  SAMPLE_EVENT,
   type AmountPresetId,
+  type BodyEvent,
   type EventKind,
-} from "@/mocks/sample";
+} from "@/lib/model";
+import { PRESET_KCAL, kcalLabel } from "@/lib/simulation";
+import { makeSimulationResult } from "@/lib/forecast";
+import { newId, saveEvent } from "@/lib/storage";
 
 type AmountMode = "preset" | "direct";
 
@@ -34,7 +37,7 @@ const MODE_OPTIONS = [
   { value: "direct", label: "직접 입력" },
 ] as const;
 
-// 이벤트 등록. 저장은 없다 — 선택·입력 상태만 화면에 보여주고, 조건이 채워지면 결과(샘플)로 이동한다.
+// 이벤트 등록. "예보 보기"를 누르면 이벤트와 시뮬레이션 결과를 저장하고 결과 화면으로 간다.
 export default function NewEventPage() {
   const router = useRouter();
   const [kind, setKind] = useState<EventKind | null>(null);
@@ -47,6 +50,21 @@ export default function NewEventPage() {
   const multiDay = kind === "여행" || kind === "명절";
   const amountReady = mode === "preset" ? preset !== null : Number(kcal) > 0;
   const ready = kind !== null && date !== "" && amountReady;
+
+  const submit = () => {
+    if (!ready || kind === null) return;
+    const event: BodyEvent = {
+      id: newId("ev"),
+      kind,
+      date,
+      endDate: multiDay && endDate >= date ? endDate : date,
+      kcal: mode === "preset" && preset ? PRESET_KCAL[preset] : Number(kcal),
+      preset: mode === "preset" ? preset : null,
+      createdAt: new Date().toISOString(),
+    };
+    saveEvent(event, makeSimulationResult(event));
+    router.push(`/app/event/${event.id}/simulation`);
+  };
 
   // 명절을 고르면 "많이"를 미리 채운다(SIMULATION.md 4장). 이미 고른 값이 있으면 그대로 둔다.
   const chooseKind = (next: EventKind) => {
@@ -111,7 +129,7 @@ export default function NewEventPage() {
                     key={p.id}
                     size="stack"
                     label={p.label}
-                    subLabel={p.kcal}
+                    subLabel={kcalLabel(p.kcal)}
                     selected={preset === p.id}
                     onClick={() => setPreset(p.id)}
                   />
@@ -144,7 +162,7 @@ export default function NewEventPage() {
           size="lg"
           icon
           disabled={!ready}
-          onClick={() => router.push(`/app/event/${SAMPLE_EVENT.id}/simulation`)}
+          onClick={submit}
         >
           예보 보기
         </Button>

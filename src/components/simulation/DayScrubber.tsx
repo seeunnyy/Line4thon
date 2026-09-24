@@ -1,4 +1,4 @@
-import { WEATHER_LABEL, type ForecastStory } from "@/mocks/sample";
+import { WEATHER_LABEL, type ForecastStory } from "@/lib/model";
 
 interface Cell {
   key: string;

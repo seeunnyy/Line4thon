@@ -1,7 +1,7 @@
 import Card from "./Card";
 import Icon, { type IconName } from "./Icon";
 import SampleTag from "./SampleTag";
-import { WEATHER_LABEL, type WeekDay, type Weather } from "@/mocks/sample";
+import { WEATHER_LABEL, type WeekDay, type Weather } from "@/lib/model";
 
 const ICON: Record<Weather, IconName> = { sunny: "sun", cloudy: "cloud", rain: "rain" };
 
