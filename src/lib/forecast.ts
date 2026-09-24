@@ -9,7 +9,7 @@ import type {
 } from "./model";
 import { addDays, dayOf, diffDays, dowOf, longDateLabel, shortDateLabel } from "./dates";
 import { kcalLabel, kgLabel, simulate } from "./simulation";
-import { guideTemplate } from "./coach";
+import { eventSummary, guideTemplate } from "./coach";
 
 // 저장된 이벤트를 화면 모양(주간 스트립·D-day·예보 결과 장면)으로 바꾼다.
 // "날씨"는 실제 기상이 아니라 몸 상태 은유다(DESIGN.md). 규칙은 예보 결과 장면과 같다:
@@ -88,6 +88,51 @@ export function pendingCheckinEvent(
   today: string,
 ): BodyEvent | null {
   return pastEvents(events, today).find((e) => eventStatus(e, today, checkins) === "pending") ?? null;
+}
+
+// 예보 목록·기록 타임라인 카드 한 장
+export interface EventListItem {
+  id: string;
+  type: BodyEvent["kind"];
+  title: string;
+  dateLabel: string;
+  badge: string;
+  tone: "dday" | "done" | "pending";
+  body: string;
+  href: string;
+}
+
+export function eventListItem(
+  e: BodyEvent,
+  sim: SimulationResult | undefined,
+  today: string,
+  checkins: CheckIn[],
+): EventListItem {
+  const status = eventStatus(e, today, checkins);
+  const base = { id: e.id, type: e.kind, title: eventTitle(e), dateLabel: eventDateLabel(e) };
+  if (status === "upcoming")
+    return {
+      ...base,
+      badge: dDayLabel(e, today),
+      tone: "dday",
+      body: sim ? eventSummary(sim) : "",
+      href: `/app/event/${e.id}/simulation`,
+    };
+  if (status === "done")
+    return {
+      ...base,
+      badge: "체크인 완료",
+      tone: "done",
+      body: "체크인을 마쳤어요. 기록에서 다시 볼 수 있어요.",
+      href: `/app/event/${e.id}/simulation`,
+    };
+  return {
+    ...base,
+    badge: "체크인 전",
+    tone: "pending",
+    body: "이벤트가 끝났어요. 지금 상태를 가볍게 체크해 봐요.",
+    href: `/app/checkin?event=${e.id}`,
+  };
 }
 
 // 이벤트 등록 때 한 번 계산해 저장한다(ARCHITECTURE.md: 시뮬레이션 결과 = 전/후 가이드 포함).

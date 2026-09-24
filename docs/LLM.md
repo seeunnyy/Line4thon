@@ -21,7 +21,7 @@ CLAUDE.md의 "LLM API 1개만" 제약을 준수한다.
 - 모델 이름은 코드에 하드코딩하지 않고 환경변수로 뺀다.
 - 응답은 정해진 형식(JSON, 문구 필드)으로 받는다. 파싱 실패·타임아웃·API 오류 시 미리 정해둔 고정 문구로 대체해서 데모가 멈추지 않게 한다.
 - LLM에 보내는 데이터는 계산에 필요한 수치만 보내고, 이름 등 식별정보는 제외한다.
-- LLM 공급자: **Anthropic Claude API** [확정 — 이번 세션에서 결정]
+- LLM 공급자: **고정 템플릿 우선 + 무료 티어 LLM 선택 연동** [2026-09-24 변경 — "무료/무결제만" 조건, docs/IMPLEMENTATION-PLAN.md 1장]. 기본은 `src/lib/coach.ts` 템플릿이고, `COACH_LLM_PROVIDER`(groq | gemini)·`COACH_LLM_API_KEY`·`COACH_LLM_MODEL`이 모두 있을 때만 `/api/coach`가 LLM을 부른다. 이전 결정(Anthropic Claude API)은 카드 없는 무료 티어가 없어 보류.
 
 ## 3. 안전 규칙
 

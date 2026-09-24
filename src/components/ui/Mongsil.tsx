@@ -1,4 +1,4 @@
-import type { Weather } from "@/mocks/sample";
+import type { Weather } from "@/lib/model";
 import MongsilBody from "./MongsilBody";
 import { CLOUD, DROP, DROPS, MONGSIL_ASPECT, SUN, place } from "./mongsil/layout";
 import type { MotionMode } from "./mongsil/motion";

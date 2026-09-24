@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Card from "./Card";
-import SampleTag from "./SampleTag";
 import StatusBadge, { type BadgeTone } from "./StatusBadge";
 
 export interface TimelineItem {
@@ -27,10 +26,7 @@ export default function Timeline({ groups }: { groups: TimelineGroup[] }) {
     <div>
       {groups.map((group) => (
         <section key={group.label}>
-          <div className="mt-6 flex h-6 items-center justify-between">
-            <h2 className="text-section font-bold">{group.label}</h2>
-            <SampleTag />
-          </div>
+          <h2 className="mt-6 flex h-6 items-center text-section font-bold">{group.label}</h2>
           <ol className="mt-2">
             {group.items.map((item, i) => {
               const first = i === 0;
