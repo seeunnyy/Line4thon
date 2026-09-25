@@ -1,15 +1,16 @@
 // 아직 저장 모듈에 대응하는 데이터가 없는 화면의 샘플 값만 남긴다. 쓰는 화면에는 "샘플" 표시를 붙인다.
 // 이벤트·시뮬레이션·체크인·프로필은 저장 모듈(src/lib/storage.ts) 데이터로 교체됐다.
 
-// 홈 히어로 "오늘의 상태" 카드(화면 시안용). 목표 수치는 docs/SIMULATION.md에 없는 값이라 전부 샘플이다.
+// 홈 히어로 하단 스탯 pill(화면 시안용). 목표 수치는 docs/SIMULATION.md에 없는 값이라 전부 샘플이다.
 // 활동은 걸음 수·목표 진행바 없이 한 일만 보여준다(DESIGN.md "수치 압박 요소" 제외 원칙).
 export const HOME_STATUS = {
   condition: "좋음",
   calorie: { value: 1240, goal: 1800 },
   water: { value: 1.2, goal: 2.0 },
+  steps: { value: 207 },
   activity: { value: "산책 30분" },
   meals: { done: 2, total: 3 },
-  weightChange: { value: -0.4, period: "지난 7일" },
+  weightChange: { value: -0.4, period: "지난 7일보다" },
 };
 
 // ── 아바타 꾸미기(P2, 에셋 없음) ─────────────────────────

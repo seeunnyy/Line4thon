@@ -21,9 +21,10 @@ const config: Config = {
         card: "#FFFFFF", // 카드(코치 카드, 패널)
         ink: "#1B1B22", // 본문
         subtext: "#424751", // 보조 글자, 비활성 탭, 비선택 칩 글자
-        cobalt: "#225FA5", // 버튼 배경, 선택 칩, 활성 탭, 링크, 캡션
-        "cobalt-pressed": "#1B4D87", // 버튼 눌림
-        primary: "#7FB3FF", // 장식 전용(로고 타일 등). 글자·아이콘 색으로 쓰지 않는다
+        cobalt: "#1A5CA7", // 버튼 배경, 선택 칩, 오늘 표시, 캡션 [2026-09-25 시안 실측치로 보정]
+        "cobalt-pressed": "#154A87", // 버튼 눌림
+        sky: "#3B88DB", // 활성 탭, 말풍선 라벨/아이콘 같은 중간 톤 파랑 [2026-09-25 시안 추가]
+        primary: "#7FB3FF", // 장식 전용(로고 타일, 아이콘 배지 배경 등). 글자·아이콘 색으로 쓰지 않는다
         disc: "#F0EFED", // 아바타 원(빈 자리)
         positive: "#006B56", // 완료·긍정 표시
         line: "#E4E1EC", // 구분선, 비활성 버튼 배경, 비활성 점
@@ -54,6 +55,8 @@ const config: Config = {
         caption: ["10px", { lineHeight: "15px", letterSpacing: ".02em" }],
         tab: ["12px", { lineHeight: "16px" }],
         "hero-num": ["32px", { lineHeight: "40px" }],
+        heading: ["16px", { lineHeight: "22px" }], // 섹션 제목(굵게), 시안 실측
+        pill: ["15px", { lineHeight: "18px" }], // 홈 스탯 pill 값
       },
       // 바텀시트 등장 모션. prefers-reduced-motion에서는 motion-safe: 접두사로 꺼진다.
       keyframes: {
@@ -74,6 +77,19 @@ const config: Config = {
           "80%": { opacity: "1" },
           "100%": { transform: "translateY(24px)", opacity: "0" },
         },
+        // 홈 히어로 배경, 몽실이 뒤로 떠다니는 그라디언트 덩어리 3종(속도·이동 폭을 다르게 둬서 서로 안 겹쳐 보인다).
+        "blob-float-1": {
+          "0%, 100%": { transform: "translate(0, 0) scale(1)" },
+          "50%": { transform: "translate(16px, -20px) scale(1.08)" },
+        },
+        "blob-float-2": {
+          "0%, 100%": { transform: "translate(0, 0) scale(1)" },
+          "50%": { transform: "translate(-18px, 16px) scale(0.94)" },
+        },
+        "blob-float-3": {
+          "0%, 100%": { transform: "translate(0, 0) scale(1)" },
+          "50%": { transform: "translate(12px, 18px) scale(1.05)" },
+        },
       },
       animation: {
         "sheet-up": "sheet-up 240ms ease-out",
@@ -83,6 +99,9 @@ const config: Config = {
         "mongsil-bob": "mongsil-bob 4.2s ease-in-out infinite",
         "mongsil-drift": "mongsil-drift 5.5s ease-in-out infinite",
         "mongsil-fall": "mongsil-fall 1.9s linear infinite",
+        "blob-float-1": "blob-float-1 9s ease-in-out infinite",
+        "blob-float-2": "blob-float-2 12s ease-in-out infinite",
+        "blob-float-3": "blob-float-3 10.5s ease-in-out infinite",
       },
     },
   },

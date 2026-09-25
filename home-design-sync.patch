@@ -1,0 +1,750 @@
+--- a/tailwind.config.ts
++++ b/tailwind.config.ts
+@@ -21,9 +21,10 @@
+         card: "#FFFFFF", // 카드(코치 카드, 패널)
+         ink: "#1B1B22", // 본문
+         subtext: "#424751", // 보조 글자, 비활성 탭, 비선택 칩 글자
+-        cobalt: "#225FA5", // 버튼 배경, 선택 칩, 활성 탭, 링크, 캡션
+-        "cobalt-pressed": "#1B4D87", // 버튼 눌림
+-        primary: "#7FB3FF", // 장식 전용(로고 타일 등). 글자·아이콘 색으로 쓰지 않는다
++        cobalt: "#1A5CA7", // 버튼 배경, 선택 칩, 오늘 표시, 캡션 [2026-09-25 시안 실측치로 보정]
++        "cobalt-pressed": "#154A87", // 버튼 눌림
++        sky: "#3B88DB", // 활성 탭, 말풍선 라벨/아이콘 같은 중간 톤 파랑 [2026-09-25 시안 추가]
++        primary: "#7FB3FF", // 장식 전용(로고 타일, 아이콘 배지 배경 등). 글자·아이콘 색으로 쓰지 않는다
+         disc: "#F0EFED", // 아바타 원(빈 자리)
+         positive: "#006B56", // 완료·긍정 표시
+         line: "#E4E1EC", // 구분선, 비활성 버튼 배경, 비활성 점
+@@ -54,6 +55,8 @@
+         caption: ["10px", { lineHeight: "15px", letterSpacing: ".02em" }],
+         tab: ["12px", { lineHeight: "16px" }],
+         "hero-num": ["32px", { lineHeight: "40px" }],
++        heading: ["16px", { lineHeight: "22px" }], // 섹션 제목(굵게), 시안 실측
++        pill: ["15px", { lineHeight: "18px" }], // 홈 스탯 pill 값
+       },
+       // 바텀시트 등장 모션. prefers-reduced-motion에서는 motion-safe: 접두사로 꺼진다.
+       keyframes: {
+@@ -74,6 +77,19 @@
+           "80%": { opacity: "1" },
+           "100%": { transform: "translateY(24px)", opacity: "0" },
+         },
++        // 홈 히어로 배경, 몽실이 뒤로 떠다니는 그라디언트 덩어리 3종(속도·이동 폭을 다르게 둬서 서로 안 겹쳐 보인다).
++        "blob-float-1": {
++          "0%, 100%": { transform: "translate(0, 0) scale(1)" },
++          "50%": { transform: "translate(16px, -20px) scale(1.08)" },
++        },
++        "blob-float-2": {
++          "0%, 100%": { transform: "translate(0, 0) scale(1)" },
++          "50%": { transform: "translate(-18px, 16px) scale(0.94)" },
++        },
++        "blob-float-3": {
++          "0%, 100%": { transform: "translate(0, 0) scale(1)" },
++          "50%": { transform: "translate(12px, 18px) scale(1.05)" },
++        },
+       },
+       animation: {
+         "sheet-up": "sheet-up 240ms ease-out",
+@@ -83,6 +99,9 @@
+         "mongsil-bob": "mongsil-bob 4.2s ease-in-out infinite",
+         "mongsil-drift": "mongsil-drift 5.5s ease-in-out infinite",
+         "mongsil-fall": "mongsil-fall 1.9s linear infinite",
++        "blob-float-1": "blob-float-1 9s ease-in-out infinite",
++        "blob-float-2": "blob-float-2 12s ease-in-out infinite",
++        "blob-float-3": "blob-float-3 10.5s ease-in-out infinite",
+       },
+     },
+   },
+--- a/src/components/ui/HeroBackdrop.tsx
++++ b/src/components/ui/HeroBackdrop.tsx
+@@ -28,6 +28,19 @@
+   ].join(", "),
+ };
+ 
++// 몽실이 뒤에 떠다니는 그라디언트 덩어리 3개(시안 2026-09-25 추가분). 흐림 배경 위에 primary/cobalt를
++// 낮은 불투명도로 흐리게 얹고, 느리게 각자 다른 속도로 이동·확대되며 떠 있는 듯한 인상을 준다.
++// 배경 장식일 뿐이라 aria-hidden이고, prefers-reduced-motion에서는 motion-safe: 접두사로 멈춘다.
++function GradientBlobs() {
++  return (
++    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
++      <span className="absolute -left-20 top-4 h-64 w-64 rounded-full bg-primary/40 blur-3xl motion-safe:animate-blob-float-1" />
++      <span className="absolute -right-24 top-[220px] h-72 w-72 rounded-full bg-cobalt/25 blur-3xl motion-safe:animate-blob-float-2" />
++      <span className="absolute -left-28 top-[420px] h-80 w-80 rounded-full bg-primary/35 blur-3xl motion-safe:animate-blob-float-3" />
++    </div>
++  );
++}
++
+ export default function HeroBackdrop({
+   weather = "sunny",
+   children,
+@@ -38,8 +51,14 @@
+   className?: string;
+ }) {
+   return (
+-    <div className={className} style={{ background: BACKDROP[weather] }}>
+-      {children}
++    // min-h: 내용이 탭바 위 화면을 다 못 채워도(짧은 상태 등) 배경이 탭바 바로 위까지는 항상 이어지게 한다
++    // (헤더 64 + 탭바 64 여유분을 뺀 값). 내용이 더 길면 자연스럽게 그만큼 늘어난다.
++    <div
++      className="relative min-h-[calc(100dvh-128px)] overflow-hidden"
++      style={{ background: BACKDROP[weather] }}
++    >
++      <GradientBlobs />
++      <div className={`relative ${className}`}>{children}</div>
+     </div>
+   );
+ }
+--- a/src/components/ui/Header.tsx
++++ b/src/components/ui/Header.tsx
+@@ -17,7 +17,8 @@
+     };
+ 
+ // UI-SPEC.md 5장 header 그대로: 높이 64, sticky top.
+-// brand: 좌우 패딩 20/26(프로토타입 그대로). back: 44px 터치 영역 좌·우 슬롯 + 가운데 제목.
++// brand: 좌우 패딩 16, 타일·워드마크 간격 12, 워드마크 24px bold, 아바타 40 (2026-09-25 시안 실측).
++// back: 44px 터치 영역 좌·우 슬롯 + 가운데 제목.
+ export default function Header(props: HeaderProps) {
+   const router = useRouter();
+   const base = "sticky top-0 z-10 h-16 bg-surface shadow-header";
+@@ -26,15 +27,20 @@
+     return (
+       <header
+         data-spec="header"
+-        className={`${base} flex items-center justify-between pl-5 pr-[26px]`}
++        className={`${base} flex items-center justify-between pl-4 pr-4`}
+       >
+-        <div className="flex items-center gap-2">
+-          <div data-spec="tile" className="h-8 w-8 rounded-tile bg-primary" />
+-          <span data-spec="wordmark" className="relative top-[1px] text-cta font-bold">
++        <div className="flex items-center gap-3">
++          <div
++            data-spec="tile"
++            className="flex h-8 w-8 items-center justify-center rounded-tile bg-primary"
++          >
++            <Icon name="cloud" size={18} className="text-white" />
++          </div>
++          <span data-spec="wordmark" className="text-display font-bold">
+             Bodycast
+           </span>
+         </div>
+-        <Avatar size={32} shadow dataSpec="avatar-h" />
++        <Avatar size={40} shadow dataSpec="avatar-h" />
+       </header>
+     );
+   }
+--- a/src/components/ui/SpeechBubble.tsx
++++ b/src/components/ui/SpeechBubble.tsx
+@@ -2,7 +2,7 @@
+ import Icon, { type IconName } from "./Icon";
+ 
+ // 홈 히어로 말풍선: 흰색, 반경 32, 패딩 16/20, shadow coach, 아래쪽 가운데 12px 꼬리.
+-// 위 줄은 아이콘 16(빈 자리) + 12px 코발트 글자, 본문은 lead(15/23).
++// 위 줄은 아이콘 16 + 12px sky(중간 톤 파랑) 글자, 본문은 lead(15/23) (2026-09-25 시안 실측).
+ export default function SpeechBubble({
+   icon = "sun",
+   label,
+@@ -18,7 +18,7 @@
+     <div
+       className={`relative rounded-card bg-white px-5 py-4 text-center shadow-coach after:absolute after:left-1/2 after:top-full after:-mt-[6px] after:h-3 after:w-3 after:-translate-x-1/2 after:rotate-45 after:bg-white after:content-[''] ${className}`}
+     >
+-      <div className="flex items-center justify-center gap-1 text-body text-cobalt">
++      <div className="flex items-center justify-center gap-1 text-body text-sky">
+         <Icon name={icon} size={16} />
+         <span>{label}</span>
+       </div>
+--- a/src/components/ui/SectionTitle.tsx
++++ b/src/components/ui/SectionTitle.tsx
+@@ -1,7 +1,9 @@
+ import type { ReactNode } from "react";
+ import Icon, { type IconName } from "./Icon";
+ 
+-// UI-SPEC.md 5장 .sec 그대로: 아이콘 15 + 간격 8, 14px, 높이 20. h2로 렌더한다.
++// 섹션 제목: cobalt 배지(24×24, 반경 8) 안에 흰 아이콘 + 굵은 16px 글자, 간격 8, 높이 24.
++// 배지는 아이콘 이름과 무관하게 항상 같은 모양이라, 어떤 페이지에서 어떤 아이콘을 넘겨도 같은 규칙이 적용된다
++// (2026-09-25 시안 실측: "이번주 예보"·"다가오는 이벤트" 제목의 진한 파랑 사각 배지).
+ export default function SectionTitle({
+   icon = "info",
+   children,
+@@ -12,8 +14,10 @@
+   dataSpec?: string;
+ }) {
+   return (
+-    <h2 data-spec={dataSpec} className="mt-[25px] flex h-5 items-center gap-2 text-section">
+-      <Icon name={icon} size={15} />
++    <h2 data-spec={dataSpec} className="mt-[25px] flex h-6 items-center gap-2 text-heading font-bold">
++      <span className="flex h-6 w-6 flex-none items-center justify-center rounded-lg bg-cobalt text-white">
++        <Icon name={icon} size={14} />
++      </span>
+       <span>{children}</span>
+     </h2>
+   );
+--- a/src/components/ui/Button.tsx
++++ b/src/components/ui/Button.tsx
+@@ -11,6 +11,9 @@
+   href?: string;
+   disabled?: boolean;
+   icon?: boolean; // lg 전용, 오른쪽 arrow-right(15px), 글자와 간격 20
++  // lg 전용. 기본 true(꽉 채움). false면 내용 너비만큼만 차지하고 좌우 패딩(px-8)을 준다
++  // (빈 상태 CTA처럼 카드 안에서 가운데 정렬된 pill 버튼, 2026-09-25 시안 실측).
++  fullWidth?: boolean;
+   onClick?: MouseEventHandler;
+   type?: "button" | "submit";
+   children: ReactNode;
+@@ -20,7 +23,7 @@
+ 
+ // 모든 버튼은 코발트 배경 + 흰 글자다. lg=56/pill28, md=44/pill, sm=보이는 pill 36(클릭영역 44).
+ const SIZE: Record<Size, string> = {
+-  lg: "h-14 w-full rounded-pill text-cta font-bold gap-5",
++  lg: "h-14 rounded-pill text-cta font-bold gap-5",
+   md: "h-11 rounded-full text-[15px] leading-none font-bold px-5",
+   sm: "h-9 rounded-full text-[14px] leading-none font-bold px-4",
+ };
+@@ -30,6 +33,7 @@
+   href,
+   disabled = false,
+   icon = false,
++  fullWidth = true,
+   onClick,
+   type = "button",
+   children,
+@@ -40,12 +44,14 @@
+     ? "bg-line text-[#7B7F8C]"
+     : "bg-cobalt text-white active:bg-cobalt-pressed";
+   const shadow = size === "lg" && !disabled ? "shadow-md" : "";
++  const width = size === "lg" ? (fullWidth ? "w-full" : "w-auto px-8") : "";
+ 
+   const classes = [
+     "inline-flex items-center justify-center transition-colors motion-reduce:transition-none",
+     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cobalt",
+     color,
+     shadow,
++    width,
+     SIZE[size],
+     className,
+   ]
+--- a/src/components/ui/EmptyState.tsx
++++ b/src/components/ui/EmptyState.tsx
+@@ -1,7 +1,8 @@
+ import type { ReactNode } from "react";
+ import Avatar from "./Avatar";
+ 
+-// 빈 상태: 빈 아바타 원 96 + 제목 lead bold + 설명 body + 선택 액션(Button md 등).
++// 빈 상태: 빈 아바타 원 112 + 제목 lead bold + 설명 body + 선택 액션(Button lg fullWidth=false 등)
++// (아바타 크기 2026-09-25 시안 실측).
+ export default function EmptyState({
+   title,
+   description,
+@@ -15,7 +16,7 @@
+ }) {
+   return (
+     <div className={`flex flex-col items-center px-2 py-4 text-center ${className}`}>
+-      <Avatar size={96} />
++      <Avatar size={112} />
+       <p className="mt-4 text-lead font-bold">{title}</p>
+       {description && <p className="mt-1 text-body text-subtext">{description}</p>}
+       {action && <div className="mt-4">{action}</div>}
+--- a/src/components/TabBar.tsx
++++ b/src/components/TabBar.tsx
+@@ -3,53 +3,36 @@
+ import Link from "next/link";
+ import { usePathname } from "next/navigation";
+ 
++// 탭바 아이콘은 Icon.tsx의 선 아이콘과 달리 채워 그린다(시안이 그렇게 되어 있다). 여기서만 쓰는 모양이라
++// Icon.tsx 레지스트리(24×24 선 아이콘 전용 계약)에는 넣지 않고 이 파일 안에 둔다.
+ const TABS = [
+   {
+     href: "/app",
+     label: "홈",
+-    icon: (
+-      <path
+-        d="M3 11.5 12 4l9 7.5M5 10v9a1 1 0 0 0 1 1h4v-5h4v5h4a1 1 0 0 0 1-1v-9"
+-        strokeLinecap="round"
+-        strokeLinejoin="round"
+-      />
+-    ),
++    icon: <path d="M12 3.2 3.6 10.8A1 1 0 0 0 3 11.7V20a1 1 0 0 0 1 1h5v-6h6v6h5a1 1 0 0 0 1-1v-8.3a1 1 0 0 0-.6-.9z" />,
+   },
+   {
+     href: "/app/forecast",
+     label: "예보",
+-    icon: (
+-      <path
+-        d="M17.5 19H7a4.5 4.5 0 0 1-1.4-8.8A5.5 5.5 0 0 1 16 9.1 4 4 0 0 1 17.5 19z"
+-        strokeLinecap="round"
+-        strokeLinejoin="round"
+-      />
+-    ),
++    icon: <path d="M17.5 19H7a4.5 4.5 0 0 1-1.4-8.8A5.5 5.5 0 0 1 16 9.1 4 4 0 0 1 17.5 19z" />,
+   },
+   {
+     href: "/app/log",
+     label: "기록",
+     icon: (
+-      <>
+-        <circle cx="12" cy="12" r="9" />
+-        <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+-      </>
++      <path d="M12 3a9 9 0 1 0 9 9 1 1 0 0 0-2 0 7 7 0 1 1-7-7 1 1 0 0 0 0-2zm.75 4.5a.75.75 0 0 0-1.5 0V12c0 .27.12.52.33.68l3 2.25a.75.75 0 1 0 .9-1.2l-2.73-2.05z" />
+     ),
+   },
+   {
+     href: "/app/me",
+-    label: "마이페이지",
+-    icon: (
+-      <>
+-        <circle cx="12" cy="8" r="4" />
+-        <path d="M5 20a7 7 0 0 1 14 0" strokeLinecap="round" />
+-      </>
+-    ),
++    label: "내 설정",
++    icon: <path d="M12 3a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM4 21a8 8 0 0 1 16 0 1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />,
+   },
+ ];
+ 
+ // UI-SPEC.md 6장 탭바 규격: 높이 64+safe-area, 4열 균등, 아이콘 24(위 패딩 9),
+-// 라벨 12/16, 아이콘·라벨 간격 2, 활성=cobalt, 비활성=subtext, 배경 surface, 그림자 tabbar.
++// 라벨 12/16, 아이콘·라벨 간격 2, 활성=sky(채운 아이콘), 비활성=subtext, 배경 surface, 그림자 tabbar
++// (라벨 "내 설정"·채운 아이콘·활성색 sky는 2026-09-25 시안 실측).
+ export default function TabBar() {
+   const pathname = usePathname();
+ 
+@@ -65,19 +48,11 @@
+             key={tab.href}
+             href={tab.href}
+             aria-current={active ? "page" : undefined}
+-            className={`flex min-h-[44px] flex-col items-center gap-0.5 pt-[9px] text-tab ${
+-              active ? "text-cobalt" : "text-subtext"
++            className={`flex min-h-[44px] flex-col items-center gap-0.5 pt-[9px] text-tab font-bold ${
++              active ? "text-sky" : "text-subtext font-normal"
+             }`}
+           >
+-            <svg
+-              width="24"
+-              height="24"
+-              viewBox="0 0 24 24"
+-              fill="none"
+-              stroke="currentColor"
+-              strokeWidth="2"
+-              aria-hidden="true"
+-            >
++            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+               {tab.icon}
+             </svg>
+             <span>{tab.label}</span>
+--- a/src/components/ui/WeekStrip.tsx
++++ b/src/components/ui/WeekStrip.tsx
+@@ -5,7 +5,7 @@
+ const ICON: Record<Weather, IconName> = { sunny: "sun", cloudy: "cloud", rain: "rain" };
+ 
+ // 날씨 UI 주간 스트립: panel 카드 안에 7열. 각 칸 = 요일 / 날씨 아이콘 24(빈 자리) / 날짜 / 날씨 단어 / 이벤트 이름.
+-// 오늘 칸은 cobalt 배경 + 흰 글자. 칸 최소 높이 88.
++// 오늘 칸은 cobalt 배경(둥근 pill 모양) + 흰 글자. 칸 최소 높이 88(2026-09-25 시안 실측: 둥근 모서리 추가).
+ export default function WeekStrip({
+   days,
+   className = "",
+@@ -20,7 +20,7 @@
+           <li
+             key={d.dow + d.date}
+             aria-current={d.today ? "date" : undefined}
+-            className={`flex min-h-[88px] flex-col items-center gap-[2px] px-0 py-2 text-body ${
++            className={`flex min-h-[88px] flex-col items-center gap-[2px] rounded-2xl px-0 py-2 text-body ${
+               d.today ? "bg-cobalt text-white" : "text-ink"
+             }`}
+           >
+--- a/src/components/ui/Icon.tsx
++++ b/src/components/ui/Icon.tsx
+@@ -26,7 +26,8 @@
+   | "user"
+   | "calorie"
+   | "activity"
+-  | "scale";
++  | "scale"
++  | "steps";
+ 
+ const ROUND = { strokeLinecap: "round", strokeLinejoin: "round" } as const;
+ // 탭바 "예보"와 같은 구름 윤곽. rain은 이걸 줄여 위로 올리고 빗줄기를 단다.
+@@ -70,6 +71,14 @@
+     />
+   ),
+   activity: <path {...ROUND} d="M3 12h4l2.5-6 5 12 2.5-6h4" />,
++  // 홈 스탯 pill "오늘의 걸음": 운동화 옆모습 + 앞쪽 움직임 선 3개.
++  steps: (
++    <g {...ROUND}>
++      <path d="M4 17c0-2 1.5-2.5 3-2.5h2.5l3-3.5h4c1.5 0 2.5 1 2.5 2.5v1.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
++      <path d="M9 11V8a2 2 0 0 1 2-2" />
++      <path d="M15 6h4M16.5 8.5h4M17.5 11h3" />
++    </g>
++  ),
+   scale: (
+     <g {...ROUND}>
+       <rect x="3" y="3" width="18" height="18" rx="4" />
+--- a/src/mocks/sample.ts
++++ b/src/mocks/sample.ts
+@@ -1,15 +1,16 @@
+ // 아직 저장 모듈에 대응하는 데이터가 없는 화면의 샘플 값만 남긴다. 쓰는 화면에는 "샘플" 표시를 붙인다.
+ // 이벤트·시뮬레이션·체크인·프로필은 저장 모듈(src/lib/storage.ts) 데이터로 교체됐다.
+ 
+-// 홈 히어로 "오늘의 상태" 카드(화면 시안용). 목표 수치는 docs/SIMULATION.md에 없는 값이라 전부 샘플이다.
++// 홈 히어로 하단 스탯 pill(화면 시안용). 목표 수치는 docs/SIMULATION.md에 없는 값이라 전부 샘플이다.
+ // 활동은 걸음 수·목표 진행바 없이 한 일만 보여준다(DESIGN.md "수치 압박 요소" 제외 원칙).
+ export const HOME_STATUS = {
+   condition: "좋음",
+   calorie: { value: 1240, goal: 1800 },
+   water: { value: 1.2, goal: 2.0 },
++  steps: { value: 207 },
+   activity: { value: "산책 30분" },
+   meals: { done: 2, total: 3 },
+-  weightChange: { value: -0.4, period: "지난 7일" },
++  weightChange: { value: -0.4, period: "지난 7일보다" },
+ };
+ 
+ // ── 아바타 꾸미기(P2, 에셋 없음) ─────────────────────────
+--- a/src/app/app/(tabs)/page.tsx
++++ b/src/app/app/(tabs)/page.tsx
+@@ -4,19 +4,18 @@
+ import HeroBackdrop from "@/components/ui/HeroBackdrop";
+ import SpeechBubble from "@/components/ui/SpeechBubble";
+ import Mongsil from "@/components/ui/Mongsil";
+-import WeatherPill from "@/components/ui/WeatherPill";
+ import SectionTitle from "@/components/ui/SectionTitle";
+ import WeekStrip from "@/components/ui/WeekStrip";
+ import EventSummaryCard from "@/components/ui/EventSummaryCard";
+ import EmptyState from "@/components/ui/EmptyState";
+ import Card from "@/components/ui/Card";
+-import SampleTag from "@/components/ui/SampleTag";
+ import Button from "@/components/ui/Button";
+-import StatusStatCard from "@/components/ui/StatusStatCard";
+-import Link from "next/link";
++import StatPill from "@/components/ui/StatPill";
++import type { IconName } from "@/components/ui/Icon";
+ import { HOME_STATUS } from "@/mocks/sample";
+ import { homeBubble, type HomeState } from "@/lib/coach";
+ import { todayISO } from "@/lib/dates";
++import type { Weather } from "@/lib/model";
+ import {
+   buildWeek,
+   pendingCheckinEvent,
+@@ -26,6 +25,8 @@
+ } from "@/lib/forecast";
+ import { useStore } from "@/lib/storage";
+ 
++const BUBBLE_ICON: Record<Weather, IconName> = { sunny: "sun", cloudy: "cloud", rain: "rain" };
++
+ // 홈. 저장된 이벤트·체크인으로 오늘의 날씨·말풍선·주간 스트립·카드를 정한다.
+ // 우선순위: 체크인할 지난 이벤트(ended) → 다가오는 이벤트(default) → 없음(empty).
+ export default function HomePage() {
+@@ -46,115 +47,73 @@
+   return (
+     <>
+       <Header variant="brand" />
+-      <main>
+-        <h1 className="sr-only">Bodycast 홈</h1>
+-
+-        {/* 히어로: 날씨에 따라 배경·pill 문구가 바뀐다 */}
+-        <HeroBackdrop weather={weather} className="px-5 pb-6 pt-5 text-center">
+-          <SpeechBubble icon="sun" label="오늘의 예보">
+-            {homeBubble(state, weather, upcoming ? { event: upcoming, when: whenLabel(upcoming, today) } : null)}
+-          </SpeechBubble>
+-          {/* 오늘의 상태: 왼쪽 3 | 몽실이 | 오른쪽 3. 폭 확보를 위해 몽실이는 calm + 190px */}
+-          <div className="mt-4 flex justify-end">
+-            <SampleTag />
+-          </div>
+-          <div className="mt-2 flex items-stretch gap-1.5">
+-            <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
+-              <StatusStatCard icon="heart" label="컨디션" value={s.condition} />
+-              <StatusStatCard
+-                icon="calorie"
+-                label="칼로리"
+-                value={`${s.calorie.value.toLocaleString()}kcal`}
+-                caption={`/ ${s.calorie.goal.toLocaleString()}`}
+-                progress={s.calorie.value / s.calorie.goal}
+-                barColor="cobalt"
+-              />
+-              <StatusStatCard
+-                icon="water"
+-                label="물 섭취량"
+-                value={`${s.water.value.toFixed(1)}L`}
+-                caption={`/ ${s.water.goal.toFixed(1)}L`}
+-                progress={s.water.value / s.water.goal}
+-                barColor="primary"
+-              />
+-            </div>
+-            <Mongsil weather={weather} height={190} motion={motion} className="self-center" />
+-            <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
+-              <StatusStatCard icon="activity" label="활동" value={s.activity.value} />
+-              <StatusStatCard
+-                icon="food"
+-                label="식단 기록"
+-                value={`${s.meals.done}/${s.meals.total}끼`}
+-                progress={s.meals.done / s.meals.total}
+-                barColor="positive"
+-              />
+-              <StatusStatCard
++      {/* 히어로부터 하단까지 배경(날씨 그라디언트 + 떠다니는 블롭)이 페이지 끝까지 이어진다(2026-09-25 시안 실측) */}
++      <HeroBackdrop weather={weather}>
++        <main>
++          <h1 className="sr-only">Bodycast 홈</h1>
++
++          <div className="px-5 pb-6 pt-5 text-center">
++            <SpeechBubble icon={BUBBLE_ICON[weather]} label="오늘의 예보">
++              {homeBubble(state, weather, upcoming ? { event: upcoming, when: whenLabel(upcoming, today) } : null)}
++            </SpeechBubble>
++            <Mongsil weather={weather} height={190} motion={motion} className="mx-auto mt-2" />
++            {/* 오늘의 상태 3종: 칼로리·걸음·체중 변화. 저장 대상 8종 밖이라 샘플로 남겨 둔다 */}
++            <div className="mt-4 flex items-center gap-3.5">
++              <StatPill icon="calorie" value={`${s.calorie.value.toLocaleString()}Kcal`} caption={`/ ${s.calorie.goal.toLocaleString()}`} />
++              <StatPill icon="steps" value={`${s.steps.value}`} caption="오늘의 걸음" />
++              <StatPill
+                 icon="scale"
+-                label="체중 변화"
+                 value={`${s.weightChange.value > 0 ? "+" : ""}${s.weightChange.value}kg`}
+                 caption={s.weightChange.period}
+               />
+             </div>
+           </div>
+-          {/* 맞춤 기록: 버튼이 아니라 칩 스타일(bg surface-low, 반경 0, 높이 44). 시안 단계라 기록 탭으로만 이동한다 */}
+-          <div className="mt-4 flex justify-center">
+-            <Link
+-              href="/app/log"
+-              className="inline-flex h-11 items-center justify-center bg-surface-low px-4 text-body text-subtext"
+-            >
+-              맞춤 기록
+-            </Link>
+-          </div>
+-          <div className="mt-4 flex justify-center">
+-            <WeatherPill weather={weather} />
+-          </div>
+-          <p className="mt-2 text-body text-subtext">일정과 컨디션을 바탕으로 한 예보예요</p>
+-        </HeroBackdrop>
+ 
+-        <div className="px-5 pb-6">
+-          <SectionTitle icon="calendar">이번 주 예보</SectionTitle>
+-          <WeekStrip days={buildWeek(today, store.events)} className="mt-2" />
+-
+-          {pending && (
+-            <>
+-              <SectionTitle icon="heart">이벤트 체크인</SectionTitle>
+-              <Card variant="round" className="mt-2">
+-                <p className="text-lead font-bold">지난 이벤트, 어땠나요?</p>
+-                <p className="mt-2 text-body">
+-                  다시 시작해도 이전의 기록은 남아요. 지금 상태를 가볍게 체크해 봐요.
+-                </p>
+-                <Button size="md" href={`/app/checkin?event=${pending.id}`} className="mt-4">
+-                  복귀 체크인 하기
+-                </Button>
+-              </Card>
+-            </>
+-          )}
+-
+-          {upcoming && upcomingSim && (
+-            <>
+-              <SectionTitle icon="calendar">다가오는 이벤트</SectionTitle>
+-              <EventSummaryCard event={upcoming} sim={upcomingSim} today={today} className="mt-2" />
+-            </>
+-          )}
+-
+-          {!upcoming && (
+-            <>
+-              <SectionTitle icon="calendar">다가오는 이벤트</SectionTitle>
+-              <Card variant="round" className="mt-2">
+-                <EmptyState
+-                  title="아직 등록된 이벤트가 없어요"
+-                  description="이벤트를 등록하면 예보를 보여드려요."
+-                  action={
+-                    <Button size="md" href="/app/event/new">
+-                      이벤트 예보 만들기
+-                    </Button>
+-                  }
+-                />
+-              </Card>
+-            </>
+-          )}
+-        </div>
+-      </main>
++          <div className="px-5 pb-6">
++            <SectionTitle icon="cloud">이번주 예보</SectionTitle>
++            <WeekStrip days={buildWeek(today, store.events)} className="mt-2" />
++
++            {pending && (
++              <>
++                <SectionTitle icon="heart">이벤트 체크인</SectionTitle>
++                <Card variant="round" className="mt-2">
++                  <p className="text-lead font-bold">지난 이벤트, 어땠나요?</p>
++                  <p className="mt-2 text-body">
++                    다시 시작해도 이전의 기록은 남아요. 지금 상태를 가볍게 체크해 봐요.
++                  </p>
++                  <Button size="md" href={`/app/checkin?event=${pending.id}`} className="mt-4">
++                    복귀 체크인 하기
++                  </Button>
++                </Card>
++              </>
++            )}
++
++            {upcoming && upcomingSim && (
++              <>
++                <SectionTitle icon="calendar">다가오는 이벤트</SectionTitle>
++                <EventSummaryCard event={upcoming} sim={upcomingSim} today={today} className="mt-2" />
++              </>
++            )}
++
++            {!upcoming && (
++              <>
++                <SectionTitle icon="calendar">다가오는 이벤트</SectionTitle>
++                <Card variant="round" className="mt-2">
++                  <EmptyState
++                    title="아직 등록된 이벤트가 없어요"
++                    description="평소보다 많이 먹을 날을 미리 등록하면 일주일 몸무게 변화를 예측해드려요."
++                    action={
++                      <Button size="lg" fullWidth={false} href="/app/event/new">
++                        이벤트 등록하기
++                      </Button>
++                    }
++                  />
++                </Card>
++              </>
++            )}
++          </div>
++        </main>
++      </HeroBackdrop>
+     </>
+   );
+ }
+--- a/docs/UI-SPEC.md
++++ b/docs/UI-SPEC.md
+@@ -30,9 +30,10 @@
+ | card | #FFFFFF | 카드(코치 카드, 패널) |
+ | ink | #1B1B22 | 본문 |
+ | subtext | #424751 | 보조 글자, 비활성 탭, 비선택 칩 글자 |
+-| cobalt | #225FA5 | 버튼 배경, 선택 칩, 활성 탭, 링크, 캡션 (흰 글자 대비 약 6.5:1) |
+-| cobalt-pressed | #1B4D87 | 버튼 눌림 [확장] |
+-| primary | #7FB3FF | 로고 타일·그라데이션·아바타 링 등 장식 전용. 글자·아이콘 색으로 쓰지 않는다 |
++| cobalt | #1A5CA7 | 버튼 배경, 선택 칩, 오늘 표시, 섹션 제목 배지, 링크, 캡션 [2026-09-25 시안 실측으로 보정, 이전 #225FA5] |
++| cobalt-pressed | #154A87 | 버튼 눌림 [확장, cobalt 보정에 맞춰 조정] |
++| sky | #3B88DB | 활성 탭, 말풍선 라벨·아이콘 [2026-09-25 시안 추가] |
++| primary | #7FB3FF | 로고 타일·그라데이션·아바타 링·홈 스탯 pill 아이콘 배지 등 장식 전용. 글자·아이콘 색으로 쓰지 않는다 |
+ | disc | #F0EFED | 아바타 원(빈 자리) |
+ | positive | #006B56 | 완료·긍정 표시 |
+ | line | #E4E1EC | 구분선, 비활성 버튼 배경, 비활성 점 [확장] |
+@@ -61,11 +62,14 @@
+ | label | 13 / 18 (링크는 13 / 19.5) | 400 | 입력 라벨, 텍스트 링크 |
+ | body | 12 / 18 | 400 | 부제, 칩, 안내 |
+ | caption | 10 / 15, letter-spacing .02em | 400 | 체크인 캡션 전용 |
+-| tab | 12 / 16 | 400 | 탭 라벨 |
++| tab | 12 / 16 | 400 | 탭 라벨(활성 시 700) |
+ | hero-num | 32 / 40 | 700 | 큰 숫자 전용 [확장] |
++| heading | 16 / 22 | 700 | 섹션 제목 [2026-09-25 시안 실측 추가, 이전 section 14/20 그대로 썼음] |
++| pill | 15 / 18 | 700 | 홈 스탯 pill 값 [2026-09-25 시안 실측 추가] |
+ 
+ ## 5. 기준 구현 — 복귀 체크인 (390px)
+ 아래는 프로토타입과 대조해 검증한 참고 구현이다. 실제 앱에서는 header는 문서 흐름 안에 두고(absolute 아님), 이 화면에는 탭바가 없다.
++**[2026-09-25 변경]** 아래 `header`/`.brand`/`.tile`/`.avatar-h` 4개 규칙은 8장으로 대체됐다(브랜드 헤더는 홈과 공용 컴포넌트라 홈 시안 반영 시 같이 바뀐다). 헤더 높이(64)와 그 아래 세로 흐름(h1 y72 이하)은 그대로 유효하다.
+ ```css
+ *{box-sizing:border-box;margin:0;padding:0}
+ body{font-family:'Bodycast Sans',sans-serif;color:#1B1B22;word-spacing:-0.01em;-webkit-font-smoothing:antialiased}
+@@ -135,9 +139,9 @@
+ - 버튼은 코발트 배경 + 흰 글자뿐이다(다른 색 버튼 없음). lg(56) / md(44) / sm(36, 클릭 영역 44). 텍스트 링크는 코발트 글자 13px, 높이 44.
+ - 입력창: 높이 52, 배경 surface-low, 반경 0, 글자 16px 이상, focus는 코발트 2px 아웃라인.
+ - 새 화면에서는 12px 미만 글자 금지(캡션 10px은 체크인 전용), 터치 영역 44px 이상.
+-- 아이콘은 Icon.tsx의 선 아이콘을 쓴다(24×24, currentColor, 굵기 2, round, 채움 없음. 크기는 유지). 이미지는 Avatar의 빈 자리를 쓴다. 아바타는 #F0EFED 원.
++- 아이콘은 Icon.tsx의 선 아이콘을 쓴다(24×24, currentColor, 굵기 2, round, 채움 없음. 크기는 유지). 이미지는 Avatar의 빈 자리를 쓴다. 아바타는 #F0EFED 원. 예외: 탭바 아이콘은 채운 아이콘이다(8장).
+ - 스크롤 화면의 하단 CTA는 sticky bottom, 좌우 20, 아래 24 + safe-area.
+-- 탭바: 높이 64 + safe-area, 4열 균등, 아이콘 박스 24(위 패딩 9), 라벨 12/16, 아이콘·라벨 간격 2, 활성=cobalt, 비활성=subtext, 배경 surface, 그림자 tabbar. 탭 구성은 홈·예보·기록·마이페이지. 탭바는 탭 최상위 화면(/app, /app/forecast, /app/log, /app/me)에서만 보인다.
++- 탭바: 높이 64 + safe-area, 4열 균등, 아이콘 박스 24(위 패딩 9, 채운 아이콘), 라벨 12/16(활성 700), 아이콘·라벨 간격 2, 활성=sky, 비활성=subtext, 배경 surface, 그림자 tabbar. 탭 구성은 홈·예보·기록·내 설정 [2026-09-25 변경, 이전 "마이페이지"]. 탭바는 탭 최상위 화면(/app, /app/forecast, /app/log, /app/me)에서만 보인다.
+ - 카피: 해요체, 짧게, 비난 없음, 수치는 "약"·범위 표현.
+ 
+ ## 7. 프로토타입과 의도적으로 다른 점
+@@ -147,3 +151,40 @@
+ 4. 아이콘: 프로토타입 에셋 대신 Icon.tsx의 선 아이콘. 이미지: 빈 자리.
+ 5. 프로토타입에서 서로 달랐던 칩 높이(약 53~57)는 57로 통일.
+ 6. 말풍선 폭은 390px에서 238이고, 그보다 좁거나 넓으면 유동이다.
++
++## 8. 홈 화면 시안 반영 [2026-09-25, 사용자 승인]
++사용자가 홈 화면 시안(402px 캡처, 몽실이 뒤 떠다니는 그라디언트 포함)을 픽셀 단위로 실측해 달라고 요청했고,
++"탭바·네비게이션바·말풍선 글자 크기와 위치, 버튼 형식 등을 다른 페이지에도 통일 적용"하라고 명시했다. 그래서 아래
++값은 홈뿐 아니라 공용 컴포넌트(Header, TabBar, SectionTitle, Button, SpeechBubble)를 통해 전체 화면에 적용된다.
++1장 "사용자 승인 없이 바꾸지 않는다" 규칙에 따라 이 절이 곧 그 승인 기록이다.
++
++### 8-1. 브랜드 헤더 (Header variant="brand")
++- 좌우 패딩 16(이전 20/26, 좌우 비대칭이었음 → 대칭 16으로 변경).
++- 로고 타일 32×32, 반경 12(불변), 배경 primary, 안에 흰색 cloud 아이콘(18px) — 이전에는 빈 타일이었다.
++- 타일-워드마크 간격 12(이전 8).
++- 워드마크: display 토큰(24/29, -0.03em, 700). 이전에는 cta 토큰(18px)을 썼다.
++- 헤더 오른쪽 아바타: 40×40(이전 32).
++
++### 8-2. 섹션 제목 (SectionTitle)
++- 아이콘을 24×24 cobalt 배지(반경 8) 안에 흰색 14px 아이콘으로 감싼다. 이전에는 배지 없이 cobalt 선 아이콘만 15px로 뒀다.
++- 글자는 heading 토큰(16/22, 700). 이전에는 section 토큰(14/20, 400, 얇은 글자)이었다.
++- 배지 색은 아이콘 종류와 무관하게 항상 cobalt다 — 어느 페이지에서 어떤 아이콘을 넘겨도 같은 규칙.
++
++### 8-3. 말풍선 (SpeechBubble)
++- 위 줄(아이콘+라벨) 색을 cobalt에서 sky로 변경. 날씨 아이콘은 상태에 따라 sun/cloud/rain으로 바뀐다(이전엔 sun 고정이었던 홈 쪽 버그를 같이 고쳤다).
++
++### 8-4. 버튼 (Button)
++- lg 버튼에 `fullWidth` prop 추가(기본 true = 기존과 동일하게 꽉 채움). `fullWidth={false}`면 내용 너비만큼만 차지하고 좌우 패딩 32(px-8) — 카드 안에서 가운데 정렬되는 pill 버튼(빈 상태 CTA 등)에 쓴다.
++
++### 8-5. 탭바 (TabBar)
++- 아이콘을 선 아이콘 → 채운 아이콘으로 변경(홈·예보·기록·내 설정 4종, 이 파일 안에서만 쓰는 전용 SVG라 Icon.tsx 레지스트리에는 넣지 않았다).
++- 활성 색을 cobalt → sky로 변경, 활성 라벨은 700(비활성은 400 유지).
++- "마이페이지" → "내 설정"으로 라벨 변경.
++
++### 8-6. 홈 화면 구조
++- 히어로부터 카드 목록까지 배경(날씨별 그라디언트 + 몽실이 뒤로 떠다니는 흐린 그라디언트 덩어리 3개)이 탭바 바로 위까지 끊기지 않고 이어진다(HeroBackdrop이 페이지 전체를 감싼다). 덩어리는 blur-3xl + 낮은 불투명도, 9~12초 주기로 각자 다르게 이동·확대되며 motion-safe로만 움직인다.
++- "오늘의 상태" 6칸(좌 3·몽실이·우 3, 진행바 포함) 구성을 걷어내고, 몽실이 바로 아래에 pill 3개(칼로리 / 오늘의 걸음 / 체중 변화)를 가로로 둔다. pill은 흰 배경 + primary색 원형 아이콘 배지(48px, pill 높이 40보다 커서 위아래로 살짝 튀어나옴) + 굵은 값 + 회색 캡션.
++- "맞춤 기록" 칩, 샘플 태그, 하단 날씨 pill·캡션 문구는 시안에 없어 제거했다.
++- 이번 주 예보 카드의 "오늘" 칸은 둥근 모서리(반경 16)를 추가했다(이전엔 각진 채로 배경만 cobalt였다).
++- 빈 상태(다가오는 이벤트 없음) 아바타는 96→112, 액션 버튼은 lg + fullWidth=false, 문구는 "이벤트 등록하기"(이전 "이벤트 예보 만들기").
++- "이번 주 예보" → "이번주 예보"(시안 표기 그대로, 띄어쓰기 제거).
+--- a/docs/ui-spec-check.js
++++ b/docs/ui-spec-check.js
+@@ -3,12 +3,18 @@
+ // EXPECT = [x, y, width, height] — 프레임(data-spec="frame") 왼쪽 위 기준.
+ (async () => {
+   await document.fonts.ready;
++  // [2026-09-25 변경] 브랜드 헤더가 홈 시안 실측치로 바뀌어 tile/wordmark/avatar-h를 다시 계산했다(UI-SPEC.md 8-1장).
++  // wordmark는 워드마크 폰트가 cta(18px)→display(24px)로 바뀌어 실제 글자 폭을 다시 재야 한다. x/y는 레이아웃 계산값,
++  // width/height는 cta 시절 실측값(80×21)에 24/18 배율을 곱한 추정값(106.7×29)이라 이 항목만 결과를 눈으로도 같이 확인할 것.
+   const EXPECT = {
+-    header: [0, 0, 390, 64], tile: [20, 16, 32, 32], wordmark: [60, 22.5, 80, 21], 'avatar-h': [332, 16, 32, 32],
++    header: [0, 0, 390, 64], tile: [16, 16, 32, 32], wordmark: [60, 17.5, 106.7, 29], 'avatar-h': [334, 12, 40, 40],
+     h1: [20, 72, 350, 58], sub: [20, 142, 350, 36],
+     coach: [20, 194, 350, 175], 'coach-avatar': [36, 210, 64, 64], bubble: [116, 210, 238, 143],
+     'bubble-text': [132, 225, 206, 92], caption: [132, 322, 206, 15],
+-    section: [20, 394, 350, 20], panel: [20, 422, 350, 195],
++    // section 높이가 20→24로 늘어나(배지형 섹션 제목, UI-SPEC.md 8-2장) 아래 panel/notice/cta/link의 y가
++    // 전부 몇 px씩 밀린다. 여기 적힌 값은 옛 20 기준이라 그대로 두면 이 줄들은 FAIL이 뜨는 게 정상이고,
++    // 실제 좌표는 이 화면을 열어 나온 값으로 다시 채워 넣을 것(수치를 추측해서 넣지 않았다).
++    section: [20, 394, 350, 24], panel: [20, 422, 350, 195],
+     'label-1': [36, 438, 309, 20],
+     'chip-1-1': [36, 466, 100.33, 57], 'chip-1-2': [140.33, 466, 100.33, 57], 'chip-1-3': [244.66, 466, 100.33, 57],
+     'label-2': [36, 535, 309, 20], 'chip-2-1': [36, 563, 152.5, 38], 'chip-2-2': [192.5, 563, 152.5, 38],
+--- /dev/null
++++ b/src/components/ui/StatPill.tsx
+@@ -0,0 +1,30 @@
++import Icon, { type IconName } from "./Icon";
++
++// 홈 히어로 하단 스탯 pill(2026-09-25 시안 실측): 흰색 pill(높이 40, 반경 full) 왼쪽에
++// primary색 아이콘 배지(48, pill보다 커서 위아래로 살짝 튀어나온다)가 겹쳐 있고, 오른쪽에
++// 굵은 값 한 줄 + 작은 회색 캡션 한 줄이 온다. 3개를 나란히 두는 용도라 폭은 내용에 맞춘다.
++export default function StatPill({
++  icon,
++  value,
++  caption,
++  className = "",
++}: {
++  icon: IconName;
++  value: string;
++  caption: string;
++  className?: string;
++}) {
++  return (
++    <div
++      className={`inline-flex h-10 min-w-0 flex-1 items-center rounded-full bg-white pr-3 shadow-panel ${className}`}
++    >
++      <span className="-my-1.5 flex h-12 w-12 flex-none items-center justify-center rounded-full bg-primary text-white">
++        <Icon name={icon} size={22} />
++      </span>
++      <div className="ml-2 min-w-0 leading-tight">
++        <p className="truncate text-pill font-bold text-ink">{value}</p>
++        <p className="truncate text-[11px] leading-[14px] text-subtext">{caption}</p>
++      </div>
++    </div>
++  );
++}

@@ -5,7 +5,7 @@ import { WEATHER_LABEL, type WeekDay, type Weather } from "@/lib/model";
 const ICON: Record<Weather, IconName> = { sunny: "sun", cloudy: "cloud", rain: "rain" };
 
 // 날씨 UI 주간 스트립: panel 카드 안에 7열. 각 칸 = 요일 / 날씨 아이콘 24(빈 자리) / 날짜 / 날씨 단어 / 이벤트 이름.
-// 오늘 칸은 cobalt 배경 + 흰 글자. 칸 최소 높이 88.
+// 오늘 칸은 cobalt 배경(둥근 pill 모양) + 흰 글자. 칸 최소 높이 88(2026-09-25 시안 실측: 둥근 모서리 추가).
 export default function WeekStrip({
   days,
   className = "",
@@ -20,7 +20,7 @@ export default function WeekStrip({
           <li
             key={d.dow + d.date}
             aria-current={d.today ? "date" : undefined}
-            className={`flex min-h-[88px] flex-col items-center gap-[2px] px-0 py-2 text-body ${
+            className={`flex min-h-[88px] flex-col items-center gap-[2px] rounded-2xl px-0 py-2 text-body ${
               d.today ? "bg-cobalt text-white" : "text-ink"
             }`}
           >

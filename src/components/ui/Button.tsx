@@ -11,6 +11,9 @@ interface ButtonProps {
   href?: string;
   disabled?: boolean;
   icon?: boolean; // lg 전용, 오른쪽 arrow-right(15px), 글자와 간격 20
+  // lg 전용. 기본 true(꽉 채움). false면 내용 너비만큼만 차지하고 좌우 패딩(px-8)을 준다
+  // (빈 상태 CTA처럼 카드 안에서 가운데 정렬된 pill 버튼, 2026-09-25 시안 실측).
+  fullWidth?: boolean;
   onClick?: MouseEventHandler;
   type?: "button" | "submit";
   children: ReactNode;
@@ -20,7 +23,7 @@ interface ButtonProps {
 
 // 모든 버튼은 코발트 배경 + 흰 글자다. lg=56/pill28, md=44/pill, sm=보이는 pill 36(클릭영역 44).
 const SIZE: Record<Size, string> = {
-  lg: "h-14 w-full rounded-pill text-cta font-bold gap-5",
+  lg: "h-14 rounded-pill text-cta font-bold gap-5",
   md: "h-11 rounded-full text-[15px] leading-none font-bold px-5",
   sm: "h-9 rounded-full text-[14px] leading-none font-bold px-4",
 };
@@ -30,6 +33,7 @@ export default function Button({
   href,
   disabled = false,
   icon = false,
+  fullWidth = true,
   onClick,
   type = "button",
   children,
@@ -40,12 +44,14 @@ export default function Button({
     ? "bg-line text-[#7B7F8C]"
     : "bg-cobalt text-white active:bg-cobalt-pressed";
   const shadow = size === "lg" && !disabled ? "shadow-md" : "";
+  const width = size === "lg" ? (fullWidth ? "w-full" : "w-auto px-8") : "";
 
   const classes = [
     "inline-flex items-center justify-center transition-colors motion-reduce:transition-none",
     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cobalt",
     color,
     shadow,
+    width,
     SIZE[size],
     className,
   ]

@@ -26,7 +26,8 @@ export type IconName =
   | "user"
   | "calorie"
   | "activity"
-  | "scale";
+  | "scale"
+  | "steps";
 
 const ROUND = { strokeLinecap: "round", strokeLinejoin: "round" } as const;
 // 탭바 "예보"와 같은 구름 윤곽. rain은 이걸 줄여 위로 올리고 빗줄기를 단다.
@@ -70,6 +71,14 @@ const REGISTERED: Partial<Record<IconName, React.ReactNode>> = {
     />
   ),
   activity: <path {...ROUND} d="M3 12h4l2.5-6 5 12 2.5-6h4" />,
+  // 홈 스탯 pill "오늘의 걸음": 운동화 옆모습 + 앞쪽 움직임 선 3개.
+  steps: (
+    <g {...ROUND}>
+      <path d="M4 17c0-2 1.5-2.5 3-2.5h2.5l3-3.5h4c1.5 0 2.5 1 2.5 2.5v1.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+      <path d="M9 11V8a2 2 0 0 1 2-2" />
+      <path d="M15 6h4M16.5 8.5h4M17.5 11h3" />
+    </g>
+  ),
   scale: (
     <g {...ROUND}>
       <rect x="3" y="3" width="18" height="18" rx="4" />
