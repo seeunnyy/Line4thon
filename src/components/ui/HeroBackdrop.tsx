@@ -28,6 +28,19 @@ const BACKDROP: Record<BackdropWeather, string> = {
   ].join(", "),
 };
 
+// 몽실이 뒤에 떠다니는 그라디언트 덩어리 3개(시안 2026-09-25 추가분). 흐림 배경 위에 primary/cobalt를
+// 낮은 불투명도로 흐리게 얹고, 느리게 각자 다른 속도로 이동·확대되며 떠 있는 듯한 인상을 준다.
+// 배경 장식일 뿐이라 aria-hidden이고, prefers-reduced-motion에서는 motion-safe: 접두사로 멈춘다.
+function GradientBlobs() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      <span className="absolute -left-20 top-4 h-64 w-64 rounded-full bg-primary/40 blur-3xl motion-safe:animate-blob-float-1" />
+      <span className="absolute -right-24 top-[220px] h-72 w-72 rounded-full bg-cobalt/25 blur-3xl motion-safe:animate-blob-float-2" />
+      <span className="absolute -left-28 top-[420px] h-80 w-80 rounded-full bg-primary/35 blur-3xl motion-safe:animate-blob-float-3" />
+    </div>
+  );
+}
+
 export default function HeroBackdrop({
   weather = "sunny",
   children,
@@ -38,8 +51,14 @@ export default function HeroBackdrop({
   className?: string;
 }) {
   return (
-    <div className={className} style={{ background: BACKDROP[weather] }}>
-      {children}
+    // min-h: 내용이 탭바 위 화면을 다 못 채워도(짧은 상태 등) 배경이 탭바 바로 위까지는 항상 이어지게 한다
+    // (헤더 64 + 탭바 64 여유분을 뺀 값). 내용이 더 길면 자연스럽게 그만큼 늘어난다.
+    <div
+      className="relative min-h-[calc(100dvh-128px)] overflow-hidden"
+      style={{ background: BACKDROP[weather] }}
+    >
+      <GradientBlobs />
+      <div className={`relative ${className}`}>{children}</div>
     </div>
   );
 }

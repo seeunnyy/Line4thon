@@ -17,7 +17,8 @@ type HeaderProps =
     };
 
 // UI-SPEC.md 5장 header 그대로: 높이 64, sticky top.
-// brand: 좌우 패딩 20/26(프로토타입 그대로). back: 44px 터치 영역 좌·우 슬롯 + 가운데 제목.
+// brand: 좌우 패딩 16, 타일·워드마크 간격 12, 워드마크 24px bold, 아바타 40 (2026-09-25 시안 실측).
+// back: 44px 터치 영역 좌·우 슬롯 + 가운데 제목.
 export default function Header(props: HeaderProps) {
   const router = useRouter();
   const base = "sticky top-0 z-10 h-16 bg-surface shadow-header";
@@ -26,15 +27,20 @@ export default function Header(props: HeaderProps) {
     return (
       <header
         data-spec="header"
-        className={`${base} flex items-center justify-between pl-5 pr-[26px]`}
+        className={`${base} flex items-center justify-between pl-4 pr-4`}
       >
-        <div className="flex items-center gap-2">
-          <div data-spec="tile" className="h-8 w-8 rounded-tile bg-primary" />
-          <span data-spec="wordmark" className="relative top-[1px] text-cta font-bold">
+        <div className="flex items-center gap-3">
+          <div
+            data-spec="tile"
+            className="flex h-8 w-8 items-center justify-center rounded-tile bg-primary"
+          >
+            <Icon name="cloud" size={18} className="text-white" />
+          </div>
+          <span data-spec="wordmark" className="text-display font-bold">
             Bodycast
           </span>
         </div>
-        <Avatar size={32} shadow dataSpec="avatar-h" />
+        <Avatar size={40} shadow dataSpec="avatar-h" />
       </header>
     );
   }
